@@ -8,7 +8,7 @@
 #include "character.h"
 #include "laser.h"
 #include "projectile.h"
-
+#include <game/server/entities/flag.h>
 //input count
 struct CInputCount
 {
@@ -54,11 +54,14 @@ void CCharacter::Reset()
 
 bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 {
+	m_CharSpawnTick = Server()->Tick();
+
 	m_EmoteStop = -1;
 	m_LastAction = -1;
-	m_LastNoAmmoSound = -1;
-	m_ActiveWeapon = WEAPON_GUN;
-	m_LastWeapon = WEAPON_HAMMER;
+	m_LastNoAmmoSound = -1;	
+	
+	m_ActiveWeapon = g_Config.m_SvWeapon;
+	m_LastWeapon = g_Config.m_SvWeapon;
 	m_QueuedWeapon = -1;
 
 	m_pPlayer = pPlayer;
@@ -116,7 +119,7 @@ void CCharacter::HandleNinja()
 	if(m_ActiveWeapon != WEAPON_NINJA)
 		return;
 
-	if ((Server()->Tick() - m_Ninja.m_ActivationTick) > (g_pData->m_Weapons.m_Ninja.m_Duration * Server()->TickSpeed() / 1000))
+	if (g_Config.m_SvWeapon != WEAPON_NINJA && (Server()->Tick() - m_Ninja.m_ActivationTick) > (g_pData->m_Weapons.m_Ninja.m_Duration * Server()->TickSpeed() / 1000))
 	{
 		// time's up, return
 		m_aWeapons[WEAPON_NINJA].m_Got = false;
@@ -479,6 +482,19 @@ bool CCharacter::GiveWeapon(int Weapon, int Ammo)
 	{
 		m_aWeapons[Weapon].m_Got = true;
 		m_aWeapons[Weapon].m_Ammo = min(g_pData->m_Weapons.m_aId[Weapon].m_Maxammo, Ammo);
+		m_ActiveWeapon = Weapon;
+		m_LastWeapon = Weapon;
+		return true;
+	}
+	return false;
+}
+
+bool CCharacter::TakeWeapon(int Weapon)
+{
+	if(m_aWeapons[Weapon].m_Got)
+	{
+		m_aWeapons[Weapon].m_Got = false;
+		m_aWeapons[Weapon].m_Ammo = 0;
 		return true;
 	}
 	return false;
@@ -558,8 +574,17 @@ void CCharacter::Tick()
 		m_pPlayer->m_ForceBalanced = false;
 	}
 
+	bool beforeHooked = (m_Core.m_HookedPlayer != -1);
 	m_Core.m_Input = m_Input;
 	m_Core.Tick(true);
+	
+	if(g_Config.m_SvHook && g_Config.m_SvHook != 3 /*3 = HOOK AND WEAPON*/ && m_Core.m_HookedPlayer != -1 && !beforeHooked)
+	{
+	
+		GameServer()->m_apPlayers[m_Core.m_HookedPlayer]->GetCharacter()->TakeDamage( vec2(0,0), g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
+					m_pPlayer->GetCID(), WEAPON_WORLD);
+	
+	}
 
 	// handle death-tiles and leaving gamelayer
 	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
@@ -724,6 +749,20 @@ void CCharacter::Die(int Killer, int Weapon)
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
 }
 
+void CCharacter::VoidDie()
+{
+	// a nice sound
+	GameServer()->CreateSound(m_Pos, SOUND_PLAYER_DIE);
+
+	// this is for auto respawn after 3 secs
+	m_pPlayer->m_DieTick = Server()->Tick();
+
+	m_Alive = false;
+	GameServer()->m_World.RemoveEntity(this);
+	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
+	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
+}
+
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 {
 	m_Core.m_Vel += Force;
@@ -733,49 +772,48 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 
 	// m_pPlayer only inflicts half damage on self
 	if(From == m_pPlayer->GetCID())
-		Dmg = max(1, Dmg/2);
-
-	m_DamageTaken++;
-
-	// create healthmod indicator
-	if(Server()->Tick() < m_DamageTakenTick+25)
+		return false;
+	
+	if(!GameServer()->m_apPlayers[From])
+		return false;
+	
+	if(g_Config.m_SvHook)
 	{
-		// make sure that the damage indicators doesn't group together
-		GameServer()->CreateDamageInd(m_Pos, m_DamageTaken*0.25f, Dmg);
+		if(g_Config.m_SvHook == 3 /* WEAPON AND HOOK*/)
+		{			
+			if(!GameWorld()->m_Core.m_apCharacters[From] || GameWorld()->m_Core.m_apCharacters[From]->m_HookedPlayer != m_pPlayer->GetCID())
+				return false;
+		}
+		else if(g_Config.m_SvHook == 1 && Weapon != WEAPON_WORLD) /*ONLY HOOK */
+			return false;
+	}
+	
+		
+	if(Weapon == WEAPON_GRENADE && Dmg < 5)
+		return false;
+		
+	if(From < 0 && From > 15)
+		return false;
+		
+	if(m_pPlayer->m_IsWanted != true)
+		return false;
+		
+	if(GameServer()->m_apPlayers[From]->m_IsWanted)
+	{
+			m_pPlayer->m_Score -= g_Config.m_SvCatchpoints; //todo: fix the +1 bug
+			if(m_pPlayer->m_Score < 0)
+				m_pPlayer->m_Score = 0;
 	}
 	else
-	{
-		m_DamageTaken = 0;
-		GameServer()->CreateDamageInd(m_Pos, 0, Dmg);
+	{		
+		//chance hanted
+		//GameServer()->m_apPlayers[From]->GetCharacter()->VoidDie();
+		GameServer()->m_apPlayers[From]->m_Score += g_Config.m_SvCatchpoints; //todo: fix the +1 bug
+		GameServer()->m_apPlayers[From]->m_IsWanted = true;
+		m_pPlayer->m_IsWanted = false;	
 	}
-
-	if(Dmg)
-	{
-		if(m_Armor)
-		{
-			if(Dmg > 1)
-			{
-				m_Health--;
-				Dmg--;
-			}
-
-			if(Dmg > m_Armor)
-			{
-				Dmg -= m_Armor;
-				m_Armor = 0;
-			}
-			else
-			{
-				m_Armor -= Dmg;
-				Dmg = 0;
-			}
-		}
-
-		m_Health -= Dmg;
-	}
-
+	m_DamageTaken++;
 	m_DamageTakenTick = Server()->Tick();
-
 	// do damage Hit sound
 	if(From >= 0 && From != m_pPlayer->GetCID() && GameServer()->m_apPlayers[From])
 	{
@@ -789,7 +827,7 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 	}
 
 	// check for death
-	if(m_Health <= 0)
+	/*if(false)
 	{
 		Die(From, Weapon);
 
@@ -805,7 +843,7 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 		}
 
 		return false;
-	}
+	}*/
 
 	if (Dmg > 2)
 		GameServer()->CreateSound(m_Pos, SOUND_PLAYER_PAIN_LONG);
@@ -875,4 +913,17 @@ void CCharacter::Snap(int SnappingClient)
 	}
 
 	pCharacter->m_PlayerFlags = GetPlayer()->m_PlayerFlags;
+	
+	if(g_Config.m_SvWeapon == WEAPON_NINJA && GetPlayer()->m_IsWanted)
+	{
+		static int id = Server()->SnapNewID();
+		CNetObj_Flag *pFlag = (CNetObj_Flag *)Server()->SnapNewItem(NETOBJTYPE_FLAG, id, sizeof(CNetObj_Flag));
+			if(!pFlag)
+				return;
+
+			pFlag->m_X = (int)m_Pos.x;
+			pFlag->m_Y = (int)m_Pos.y;
+			pFlag->m_Team = 0;
+	
+	}
 }

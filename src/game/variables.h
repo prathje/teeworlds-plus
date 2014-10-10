@@ -83,6 +83,11 @@ MACRO_CONFIG_INT(SvVoteKick, sv_vote_kick, 1, 0, 1, CFGFLAG_SERVER, "Allow votin
 MACRO_CONFIG_INT(SvVoteKickMin, sv_vote_kick_min, 0, 0, MAX_CLIENTS, CFGFLAG_SERVER, "Minimum number of players required to start a kick vote")
 MACRO_CONFIG_INT(SvVoteKickBantime, sv_vote_kick_bantime, 5, 0, 1440, CFGFLAG_SERVER, "The time to ban a player if kicked by vote. 0 makes it just use kick")
 
+MACRO_CONFIG_INT(SvWeapon, sv_weapon, 0, 0, 6, CFGFLAG_SERVER, "set weapon 0:hammer, 1:gun, 2:shutgun, 3:grenade, 4:rifle (std=0), 5: Ninja, 6: Hook")
+MACRO_CONFIG_INT(SvHook, sv_hook, 0, 0, 3, CFGFLAG_SERVER, "Set Hook to be the main catching tool:0=use weapon 1=use only hook, 2=use weapon or hook 3=use weapon and hook")
+MACRO_CONFIG_INT(SvNumWanted, sv_num_wanted, 1, 1, 15, CFGFLAG_SERVER, "Enable Only weapon /hook (0) or Both (1)")
+MACRO_CONFIG_INT(SvCatchpoints, sv_catchpoints, 5, 0, 1000, CFGFLAG_SERVER, "set catchpoints (std=5)")
+
 // debug
 #ifdef CONF_DEBUG // this one can crash the server if not used correctly
 	MACRO_CONFIG_INT(DbgDummies, dbg_dummies, 0, 0, 15, CFGFLAG_SERVER, "")

@@ -1,5 +1,7 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include <stdlib.h>
+
 #include <engine/shared/config.h>
 #include <game/mapitems.h>
 
@@ -32,7 +34,8 @@ IGameController::IGameController(class CGameContext *pGameServer)
 
 	m_aNumSpawnPoints[0] = 0;
 	m_aNumSpawnPoints[1] = 0;
-	m_aNumSpawnPoints[2] = 0;
+	m_aNumSpawnPoints[2] = 0;	
+	
 }
 
 IGameController::~IGameController()
@@ -136,6 +139,7 @@ bool IGameController::OnEntity(int Index, vec2 Pos)
 		m_aaSpawnPoints[1][m_aNumSpawnPoints[1]++] = Pos;
 	else if(Index == ENTITY_SPAWN_BLUE)
 		m_aaSpawnPoints[2][m_aNumSpawnPoints[2]++] = Pos;
+	/*
 	else if(Index == ENTITY_ARMOR_1)
 		Type = POWERUP_ARMOR;
 	else if(Index == ENTITY_HEALTH_1)
@@ -160,7 +164,7 @@ bool IGameController::OnEntity(int Index, vec2 Pos)
 		Type = POWERUP_NINJA;
 		SubType = WEAPON_NINJA;
 	}
-
+	*/
 	if(Type != -1)
 	{
 		CPickup *pPickup = new CPickup(&GameServer()->m_World, Type, SubType);
@@ -221,6 +225,15 @@ void IGameController::StartRound()
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "start round type='%s' teamplay='%d'", m_pGameType, m_GameFlags&GAMEFLAG_TEAMS);
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
+	
+	for(int i = 0; i < MAX_CLIENTS; ++i)
+	{
+		CPlayer *pP = GameServer()->m_apPlayers[i];
+		if(pP && pP->m_IsWanted)
+		{
+			pP->m_IsWanted = false;
+		}
+	}
 }
 
 void IGameController::ChangeMap(const char *pToMap)
@@ -364,8 +377,9 @@ void IGameController::OnCharacterSpawn(class CCharacter *pChr)
 	pChr->IncreaseHealth(10);
 
 	// give default weapons
-	pChr->GiveWeapon(WEAPON_HAMMER, -1);
-	pChr->GiveWeapon(WEAPON_GUN, 10);
+	pChr->GiveWeapon(g_Config.m_SvWeapon, -1);
+	
+	//g_Config.m_svWeapon
 }
 
 void IGameController::DoWarmup(int Seconds)
@@ -538,6 +552,7 @@ void IGameController::Tick()
 	}
 
 	DoWincheck();
+	
 }
 
 

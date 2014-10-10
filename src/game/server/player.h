@@ -95,6 +95,9 @@ public:
 		int m_Min;
 		int m_Max;
 	} m_Latency;
+	
+	bool m_IsWanted;
+	bool m_LastWinner;
 
 private:
 	CCharacter *m_pCharacter;

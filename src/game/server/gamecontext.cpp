@@ -541,7 +541,16 @@ void CGameContext::OnClientEnter(int ClientID)
 
 	str_format(aBuf, sizeof(aBuf), "team_join player='%d:%s' team=%d", ClientID, Server()->ClientName(ClientID), m_apPlayers[ClientID]->GetTeam());
 	Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
-
+	
+	
+	
+	SendChatTarget(ClientID, "Welcome to our Wanted server. Use /info for more information. Mod (c) by EmuloV and Pata.");	
+	const char* m_aWeaponConfigurations[4] = {
+	"only your weapon", "only your hook", "your weapon or your hook", "your weapon and your hook together"	
+	};
+	str_format(aBuf, sizeof(aBuf), "Use %s to catch other players!", m_aWeaponConfigurations[g_Config.m_SvHook]);
+	
+	SendChatTarget(ClientID, aBuf);
 	m_VoteUpdate = true;
 }
 
@@ -652,7 +661,20 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 			pPlayer->m_LastChat = Server()->Tick();
 
-			SendChat(ClientID, Team, pMsg->m_pMessage);
+			if(str_comp_nocase(pMsg->m_pMessage, "/info") == 0)
+			{
+				char aBuf[512];
+				SendChatTarget(ClientID, "Catch one of the red players to become wanted. Wanted players earn points per time.");
+				SendChatTarget(ClientID, "Blue: Catch red players, Red: flee from the blue players or catch red players by yourself to decrease their scores.");				
+				const char* m_aWeaponConfigurations[4] = {
+				"only your weapon", "only your hook", "your weapon or your hook", "your weapon and your hook together"	
+				};
+				str_format(aBuf, sizeof(aBuf), "Use %s to catch other players!", m_aWeaponConfigurations[g_Config.m_SvHook]);
+				SendChatTarget(ClientID, aBuf);
+				SendChatTarget(ClientID, "Mod (c) by EmuloV and Pata. Have Fun!");
+			}
+			else
+				SendChat(ClientID, Team, pMsg->m_pMessage);
 		}
 		else if(MsgID == NETMSGTYPE_CL_CALLVOTE)
 		{
@@ -1493,6 +1515,7 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 	//players = new CPlayer[MAX_CLIENTS];
 
 	// select gametype
+	/*
 	if(str_comp(g_Config.m_SvGametype, "mod") == 0)
 		m_pController = new CGameControllerMOD(this);
 	else if(str_comp(g_Config.m_SvGametype, "ctf") == 0)
@@ -1500,7 +1523,8 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 	else if(str_comp(g_Config.m_SvGametype, "tdm") == 0)
 		m_pController = new CGameControllerTDM(this);
 	else
-		m_pController = new CGameControllerDM(this);
+	*/
+	m_pController = new CGameControllerDM(this);
 
 	// setup core world
 	//for(int i = 0; i < MAX_CLIENTS; i++)
