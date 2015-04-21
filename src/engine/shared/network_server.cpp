@@ -7,11 +7,10 @@
 #include "netban.h"
 #include "network.h"
 
-
 bool CNetServer::Open(NETADDR BindAddr, CNetBan *pNetBan, int MaxClients, int MaxClientsPerIP, int Flags)
 {
 	// zero out the whole structure
-	mem_zero(this, sizeof(*this));
+	//mem_zero(this, sizeof(*this));
 
 	// open socket
 	m_Socket = net_udp_create(BindAddr);
@@ -177,6 +176,7 @@ int CNetServer::Recv(CNetChunk *pChunk)
 								m_aSlots[i].m_Connection.Feed(&m_RecvUnpacker.m_Data, &Addr);
 								if(m_pfnNewClient)
 									m_pfnNewClient(i, m_UserPtr);
+								
 								break;
 							}
 						}

@@ -1818,6 +1818,35 @@ void gui_messagebox(const char *title, const char *message)
 
 int str_isspace(char c) { return c == ' ' || c == '\n' || c == '\t'; }
 
+#include "UTF8-letter-cases.h"
+
+int str_isupper(int c)
+{
+	int Entrys = sizeof(aaUTF8CapitalLetters)/(3*sizeof(int)), i;
+	for(i = 0; i < Entrys; i++)
+		if(c >= aaUTF8CapitalLetters[i][0] && c <= aaUTF8CapitalLetters[i][1])
+			return 1;
+	return 0;
+}
+
+int str_islower(int c)
+{
+	int Entrys = sizeof(aaUTF8LowerLetters)/(3*sizeof(int)), i;
+	for(i = 0; i < Entrys; i++)
+		if(c >= aaUTF8LowerLetters[i][0] && c <= aaUTF8LowerLetters[i][1])
+			return 1;
+	return 0;
+}
+
+int str_tolower(int c)
+{
+	int Entrys = sizeof(aaUTF8CapitalLetters)/(3*sizeof(int)), i;
+	for(i = 0; i < Entrys; i++)
+		if(c >= aaUTF8CapitalLetters[i][0] && c <= aaUTF8CapitalLetters[i][1])
+			return c + aaUTF8CapitalLetters[i][2];
+	return c;
+}
+
 char str_uppercase(char c)
 {
 	if(c >= 'a' && c <= 'z')
@@ -1837,7 +1866,7 @@ const char *str_utf8_skip_whitespaces(const char *str)
 	while(*str)
 	{
 		str_old = str;
-		code = str_utf8_decode(&str);
+		code = str_utf8_decode((const char **)&str);
 
 		// check if unicode is not empty
 		if(code > 0x20 && code != 0xA0 && code != 0x034F && (code < 0x2000 || code > 0x200F) && (code < 0x2028 || code > 0x202F) &&

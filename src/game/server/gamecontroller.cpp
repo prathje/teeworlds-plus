@@ -1,7 +1,5 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
-#include <stdlib.h>
-
 #include <engine/shared/config.h>
 #include <game/mapitems.h>
 
@@ -11,6 +9,8 @@
 #include "gamecontroller.h"
 #include "gamecontext.h"
 
+#include <stdio.h>
+#include <time.h>
 
 IGameController::IGameController(class CGameContext *pGameServer)
 {
@@ -34,8 +34,9 @@ IGameController::IGameController(class CGameContext *pGameServer)
 
 	m_aNumSpawnPoints[0] = 0;
 	m_aNumSpawnPoints[1] = 0;
-	m_aNumSpawnPoints[2] = 0;	
-	
+	m_aNumSpawnPoints[2] = 0;
+
+	m_FakeWarmup = 0;
 }
 
 IGameController::~IGameController()
@@ -139,32 +140,35 @@ bool IGameController::OnEntity(int Index, vec2 Pos)
 		m_aaSpawnPoints[1][m_aNumSpawnPoints[1]++] = Pos;
 	else if(Index == ENTITY_SPAWN_BLUE)
 		m_aaSpawnPoints[2][m_aNumSpawnPoints[2]++] = Pos;
-	/*
-	else if(Index == ENTITY_ARMOR_1)
-		Type = POWERUP_ARMOR;
-	else if(Index == ENTITY_HEALTH_1)
-		Type = POWERUP_HEALTH;
-	else if(Index == ENTITY_WEAPON_SHOTGUN)
+
+	if(!IsInstagib())
 	{
-		Type = POWERUP_WEAPON;
-		SubType = WEAPON_SHOTGUN;
+		if(Index == ENTITY_ARMOR_1)
+			Type = POWERUP_ARMOR;
+		else if(Index == ENTITY_HEALTH_1)
+			Type = POWERUP_HEALTH;
+		else if(Index == ENTITY_WEAPON_SHOTGUN)
+		{
+			Type = POWERUP_WEAPON;
+			SubType = WEAPON_SHOTGUN;
+		}
+		else if(Index == ENTITY_WEAPON_GRENADE)
+		{
+			Type = POWERUP_WEAPON;
+			SubType = WEAPON_GRENADE;
+		}
+		else if(Index == ENTITY_WEAPON_RIFLE)
+		{
+			Type = POWERUP_WEAPON;
+			SubType = WEAPON_RIFLE;
+		}
+		else if(Index == ENTITY_POWERUP_NINJA && g_Config.m_SvPowerups)
+		{
+			Type = POWERUP_NINJA;
+			SubType = WEAPON_NINJA;
+		}
 	}
-	else if(Index == ENTITY_WEAPON_GRENADE)
-	{
-		Type = POWERUP_WEAPON;
-		SubType = WEAPON_GRENADE;
-	}
-	else if(Index == ENTITY_WEAPON_RIFLE)
-	{
-		Type = POWERUP_WEAPON;
-		SubType = WEAPON_RIFLE;
-	}
-	else if(Index == ENTITY_POWERUP_NINJA && g_Config.m_SvPowerups)
-	{
-		Type = POWERUP_NINJA;
-		SubType = WEAPON_NINJA;
-	}
-	*/
+
 	if(Type != -1)
 	{
 		CPickup *pPickup = new CPickup(&GameServer()->m_World, Type, SubType);
@@ -183,6 +187,8 @@ void IGameController::EndRound()
 	GameServer()->m_World.m_Paused = true;
 	m_GameOverTick = Server()->Tick();
 	m_SuddenDeath = 0;
+	GameServer()->m_SpecMuted = false;
+	SaveStats();
 }
 
 void IGameController::ResetGame()
@@ -214,6 +220,14 @@ void IGameController::StartRound()
 {
 	ResetGame();
 
+	for(int i = 0; i < MAX_CLIENTS; i++)
+		if(GameServer()->m_apPlayers[i])
+		{
+			mem_zero(&GameServer()->m_apPlayers[i]->m_Stats, sizeof(GameServer()->m_apPlayers[i]->m_Stats));
+			GameServer()->m_apPlayers[i]->m_GotAward = false;
+			GameServer()->m_apPlayers[i]->m_Spree = 0;
+		}
+
 	m_RoundStartTick = Server()->Tick();
 	m_SuddenDeath = 0;
 	m_GameOverTick = -1;
@@ -225,15 +239,6 @@ void IGameController::StartRound()
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "start round type='%s' teamplay='%d'", m_pGameType, m_GameFlags&GAMEFLAG_TEAMS);
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
-	
-	for(int i = 0; i < MAX_CLIENTS; ++i)
-	{
-		CPlayer *pP = GameServer()->m_apPlayers[i];
-		if(pP && pP->m_IsWanted)
-		{
-			pP->m_IsWanted = false;
-		}
-	}
 }
 
 void IGameController::ChangeMap(const char *pToMap)
@@ -358,13 +363,25 @@ int IGameController::OnCharacterDeath(class CCharacter *pVictim, class CPlayer *
 	if(!pKiller || Weapon == WEAPON_GAME)
 		return 0;
 	if(pKiller == pVictim->GetPlayer())
+	{
 		pVictim->GetPlayer()->m_Score--; // suicide
+		if(g_Config.m_SvLoltextShow)
+			GameServer()->CreateLolText(pKiller->GetCharacter(), "-1");
+	}
 	else
 	{
 		if(IsTeamplay() && pVictim->GetPlayer()->GetTeam() == pKiller->GetTeam())
+		{
 			pKiller->m_Score--; // teamkill
+			if(g_Config.m_SvLoltextShow)
+				GameServer()->CreateLolText(pKiller->GetCharacter(), "-1");
+		}
 		else
+		{
 			pKiller->m_Score++; // normal kill
+			if(g_Config.m_SvLoltextShow)
+				GameServer()->CreateLolText(pKiller->GetCharacter(), "+1");
+		}
 	}
 	if(Weapon == WEAPON_SELF)
 		pVictim->GetPlayer()->m_RespawnTick = Server()->Tick()+Server()->TickSpeed()*3.0f;
@@ -376,10 +393,14 @@ void IGameController::OnCharacterSpawn(class CCharacter *pChr)
 	// default health
 	pChr->IncreaseHealth(10);
 
-	// give default weapons
-	pChr->GiveWeapon(g_Config.m_SvWeapon, -1);
-	
-	//g_Config.m_svWeapon
+	if(IsInstagib())
+		pChr->GiveWeapon(WEAPON_RIFLE, -1);
+	else
+	{
+		// give default weapons
+		pChr->GiveWeapon(WEAPON_HAMMER, -1);
+		pChr->GiveWeapon(WEAPON_GUN, 10);
+	}
 }
 
 void IGameController::DoWarmup(int Seconds)
@@ -443,6 +464,20 @@ void IGameController::Tick()
 			m_RoundCount++;
 		}
 	}
+
+	if(m_FakeWarmup)
+	{
+		m_FakeWarmup--;
+		if(!m_FakeWarmup && GameServer()->m_World.m_Paused)
+		{
+			GameServer()->m_World.m_Paused = false;
+			GameServer()->SendChat(-1, CGameContext::CHAT_ALL, "Game started");
+		}
+	}
+
+	// Grenade should have everytime more than 3 bullets
+	if(g_Config.m_SvGrenadeAmmo < 4)
+		g_Config.m_SvGrenadeAmmo = -1;
 
 	// game is Paused
 	if(GameServer()->m_World.m_Paused)
@@ -552,7 +587,6 @@ void IGameController::Tick()
 	}
 
 	DoWincheck();
-	
 }
 
 
@@ -576,7 +610,11 @@ void IGameController::Snap(int SnappingClient)
 	if(GameServer()->m_World.m_Paused)
 		pGameInfoObj->m_GameStateFlags |= GAMESTATEFLAG_PAUSED;
 	pGameInfoObj->m_RoundStartTick = m_RoundStartTick;
-	pGameInfoObj->m_WarmupTimer = m_Warmup;
+
+	if(m_FakeWarmup)
+		pGameInfoObj->m_WarmupTimer = m_FakeWarmup;
+	else
+		pGameInfoObj->m_WarmupTimer = m_Warmup;
 
 	pGameInfoObj->m_ScoreLimit = g_Config.m_SvScorelimit;
 	pGameInfoObj->m_TimeLimit = g_Config.m_SvTimelimit;
@@ -746,4 +784,67 @@ int IGameController::ClampTeam(int Team)
 	if(IsTeamplay())
 		return Team&1;
 	return 0;
+}
+
+void IGameController::SaveStats()
+{
+	if(g_Config.m_SvStatsFile[0] && g_Config.m_SvStatsOutputlevel)
+	{
+		char aBuf[1024];
+		FILE* pFile = fopen(g_Config.m_SvStatsFile, "a");
+
+		if(!pFile)
+		{
+			str_format(aBuf, sizeof(aBuf), "Failed to open %s to save stats", g_Config.m_SvStatsFile);
+			GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "stats", aBuf);
+			return;
+		}
+
+		{
+			char TimeStr[2][128];
+			double PlayingTime = (double)(Server()->Tick() - m_RoundStartTick)/Server()->TickSpeed();
+			time_t Now_t = time(0);
+			time_t StartRound_t = Now_t - (int)PlayingTime;
+
+			strftime(TimeStr[0], sizeof(TimeStr[0]), "Roundstart at %d.%m.%Y on %X", localtime(&StartRound_t));
+			strftime(TimeStr[1], sizeof(TimeStr[1]), "and ended at %X", localtime(&Now_t));
+			str_format(aBuf, sizeof(aBuf), "--> %s %s (Length: %d min %.2lf sec). Gametype: %s\n\n", TimeStr[0], TimeStr[1], (int)PlayingTime/60, PlayingTime - ((int)PlayingTime/60)*60, GameServer()->GameType());
+			fputs(aBuf, pFile);
+		}
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(!GameServer()->m_apPlayers[i] || GameServer()->m_apPlayers[i]->GetTeam() == TEAM_SPECTATORS)
+				continue;
+			CPlayer* pP = GameServer()->m_apPlayers[i];
+
+			char aaTemp[3][512] = {"", "", ""};
+			// Outputlevel 1
+			str_format(aaTemp[0], sizeof(aaTemp[0]), "ID: %2d\t| Name: %-15.15s| Team: %-10.10s| Score: %-6.1d| Kills: %-6.1d| Deaths: %-6.1d| Ratio: %-6.2lf",
+					pP->GetCID(), Server()->ClientName(i), GetTeamName(pP->GetTeam()), pP->m_Score, pP->m_Stats.m_Kills, pP->m_Stats.m_Deaths, (pP->m_Stats.m_Deaths > 0) ? ((float)pP->m_Stats.m_Kills / (float)pP->m_Stats.m_Deaths) : 0
+					);
+			//Outputlevel 2
+			if(g_Config.m_SvStatsOutputlevel > 1)
+				str_format(aaTemp[1], sizeof(aaTemp[1]), "| Hits: %-6.1d| Total Shots: %-6.1d| Captures: %-6.1d| Fastest Capture: %6.2lf",
+					pP->m_Stats.m_Hits, pP->m_Stats.m_TotalShots, (m_GameFlags&GAMEFLAG_FLAGS) ? pP->m_Stats.m_Captures : -1, ((m_GameFlags&GAMEFLAG_FLAGS) || pP->m_Stats.m_FastestCapture < 0.1) ? pP->m_Stats.m_FastestCapture : -1
+					);
+			//Outputlevel 3
+			if(g_Config.m_SvStatsOutputlevel > 2)
+				str_format(aaTemp[2], sizeof(aaTemp[2]), "| Lost Flags: %-6.1d",
+					pP->m_Stats.m_LostFlags
+					);
+
+			str_format(aBuf, sizeof(aBuf), "%s %s %s\n", aaTemp[0], aaTemp[1], aaTemp[2]);
+			fputs(aBuf, pFile);
+		}
+
+		if(IsTeamplay())
+		{
+			str_format(aBuf, sizeof(aBuf), "---------------------\nRed: %d | Blue %d\n", m_aTeamscore[TEAM_RED], m_aTeamscore[TEAM_BLUE]);
+			fputs(aBuf, pFile);
+		}
+
+		fputs("________________________________________________________________________________________________________________________________________\n\n\n", pFile);
+		fclose(pFile);
+	}
 }

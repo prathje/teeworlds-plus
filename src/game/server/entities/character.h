@@ -48,7 +48,6 @@ public:
 	void FireWeapon();
 
 	void Die(int Killer, int Weapon);
-	void VoidDie();
 	bool TakeDamage(vec2 Force, int Dmg, int From, int Weapon);
 
 	bool Spawn(class CPlayer *pPlayer, vec2 Pos);
@@ -58,15 +57,23 @@ public:
 	bool IncreaseArmor(int Amount);
 
 	bool GiveWeapon(int Weapon, int Ammo);
-	bool TakeWeapon(int Weapon);
 	void GiveNinja();
 
 	void SetEmote(int Emote, int Tick);
-	
-	int GetCharSpawnTick() {return m_CharSpawnTick;}
+	void SetEmoteFix(int Emote, int Tick);
 
 	bool IsAlive() const { return m_Alive; }
 	class CPlayer *GetPlayer() { return m_pPlayer; }
+
+	void Freeze(int);
+	int Frozen();
+	CCharacterCore* GetCore() {return &m_Core;}
+	void AddSpree();
+	void EndSpree(int Killer);
+	void KillChar();
+	void Melt(int MelterID);
+	bool TakeWeapon(int Weapon);
+	bool Spawnprotected();
 
 private:
 	// player controlling this character
@@ -117,8 +124,6 @@ private:
 
 	int m_Health;
 	int m_Armor;
-	
-	int m_CharSpawnTick;
 
 	// ninja
 	struct
@@ -137,6 +142,15 @@ private:
 	CCharacterCore m_SendCore; // core that we should send
 	CCharacterCore m_ReckoningCore; // the dead reckoning core
 
+	int m_FreezeTicks;
+	int m_MeltTicks;
+	bool m_DeepFreeze;
+	int m_SpawnProtectTick;
+	//
+	int Anticamper();
+	bool m_SentCampMsg;
+	int m_CampTick;
+	vec2 m_CampPos;
 };
 
 #endif

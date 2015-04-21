@@ -8,7 +8,7 @@
 #include "character.h"
 #include "laser.h"
 #include "projectile.h"
-#include <game/server/entities/flag.h>
+
 //input count
 struct CInputCount
 {
@@ -45,6 +45,8 @@ CCharacter::CCharacter(CGameWorld *pWorld)
 	m_ProximityRadius = ms_PhysSize;
 	m_Health = 0;
 	m_Armor = 0;
+	m_FreezeTicks = 0;
+	m_DeepFreeze = false;
 }
 
 void CCharacter::Reset()
@@ -54,18 +56,48 @@ void CCharacter::Reset()
 
 bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 {
-	m_CharSpawnTick = Server()->Tick();
-
 	m_EmoteStop = -1;
 	m_LastAction = -1;
-	m_LastNoAmmoSound = -1;	
-	
-	m_ActiveWeapon = g_Config.m_SvWeapon;
-	m_LastWeapon = g_Config.m_SvWeapon;
+
+	if(GameServer()->m_pController->IsInstagib())
+	{
+		if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_GCTF)
+		{
+			m_ActiveWeapon = WEAPON_GRENADE;
+			m_LastWeapon = WEAPON_GRENADE;
+		}
+		else
+		{
+			m_ActiveWeapon = WEAPON_RIFLE;
+			m_LastWeapon = WEAPON_RIFLE;
+		}
+	}
+	else
+	{
+		m_ActiveWeapon = WEAPON_GUN;
+		m_LastWeapon = WEAPON_HAMMER;
+	}
+
+	m_LastNoAmmoSound = -1;
 	m_QueuedWeapon = -1;
 
 	m_pPlayer = pPlayer;
 	m_Pos = Pos;
+
+	for(int i = 0; i < NUM_WEAPONS-1; i++)
+		if(m_pPlayer->m_KeepWeapon[i] == true)
+			GiveWeapon(i, -1);
+	if(m_pPlayer->m_KeepAward)
+		m_pPlayer->m_GotAward = true;
+
+	if(g_Config.m_SvSpawnprotection)
+		m_SpawnProtectTick = Server()->Tick() + Server()->TickSpeed()*g_Config.m_SvSpawnprotection;
+
+	if(m_pPlayer->m_FreezeOnSpawn)
+	{
+		Freeze(g_Config.m_SvIFreezeAutomeltTime);
+		m_pPlayer->m_FreezeOnSpawn = false;
+	}
 
 	m_Core.Reset();
 	m_Core.Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -119,7 +151,7 @@ void CCharacter::HandleNinja()
 	if(m_ActiveWeapon != WEAPON_NINJA)
 		return;
 
-	if (g_Config.m_SvWeapon != WEAPON_NINJA && (Server()->Tick() - m_Ninja.m_ActivationTick) > (g_pData->m_Weapons.m_Ninja.m_Duration * Server()->TickSpeed() / 1000))
+	if ((Server()->Tick() - m_Ninja.m_ActivationTick) > (g_pData->m_Weapons.m_Ninja.m_Duration * Server()->TickSpeed() / 1000) && !(m_FreezeTicks || m_DeepFreeze))
 	{
 		// time's up, return
 		m_aWeapons[WEAPON_NINJA].m_Got = false;
@@ -408,7 +440,16 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_RIFLE:
 		{
-			new CLaser(GameWorld(), m_Pos, Direction, GameServer()->Tuning()->m_LaserReach, m_pPlayer->GetCID());
+			if(!m_pPlayer->m_GotAward || (g_Config.m_SvKillingspreeAwardLasers == 1))
+			{
+				new CLaser(GameWorld(), m_Pos, Direction, GameServer()->Tuning()->m_LaserReach, m_pPlayer->GetCID());
+			}
+			else
+				for(float i = -0.5f * g_Config.m_SvKillingspreeAwardLasers; i < 0.5f * g_Config.m_SvKillingspreeAwardLasers; i++)
+				{
+					float a = i * 0.01f * (float)g_Config.m_SvKillingspreeAwardLasersSplit + GetAngle(Direction);
+					new CLaser(GameWorld(), m_Pos, normalize(vec2(cosf(a), sinf(a))), GameServer()->Tuning()->m_LaserReach, m_pPlayer->GetCID());
+				}
 			GameServer()->CreateSound(m_Pos, SOUND_RIFLE_FIRE);
 		} break;
 
@@ -426,13 +467,26 @@ void CCharacter::FireWeapon()
 
 	}
 
+	m_pPlayer->m_Stats.m_Shots[m_ActiveWeapon]++;
+	m_pPlayer->m_Stats.m_TotalShots++;
+
 	m_AttackTick = Server()->Tick();
 
 	if(m_aWeapons[m_ActiveWeapon].m_Ammo > 0) // -1 == unlimited
 		m_aWeapons[m_ActiveWeapon].m_Ammo--;
 
 	if(!m_ReloadTimer)
-		m_ReloadTimer = g_pData->m_Weapons.m_aId[m_ActiveWeapon].m_Firedelay * Server()->TickSpeed() / 1000;
+	{
+		int FireDelay = g_pData->m_Weapons.m_aId[m_ActiveWeapon].m_Firedelay;
+
+		if(m_ActiveWeapon == WEAPON_RIFLE)
+			FireDelay = g_Config.m_SvLaserReloadTime;
+
+		if(m_pPlayer->m_GotAward)
+			FireDelay = g_Config.m_SvKillingspreeAwardFiredelay;
+
+		m_ReloadTimer = FireDelay * Server()->TickSpeed() / 1000;
+	}
 }
 
 void CCharacter::HandleWeapons()
@@ -452,6 +506,10 @@ void CCharacter::HandleWeapons()
 
 	// ammo regen
 	int AmmoRegenTime = g_pData->m_Weapons.m_aId[m_ActiveWeapon].m_Ammoregentime;
+	bool gCTF = GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_GCTF;
+	if(gCTF && m_aWeapons[m_ActiveWeapon].m_Ammo > -1)
+		AmmoRegenTime = g_Config.m_SvGrenadeAmmoRegen;
+
 	if(AmmoRegenTime)
 	{
 		// If equipped and not active, regen ammo?
@@ -463,7 +521,7 @@ void CCharacter::HandleWeapons()
 			if ((Server()->Tick() - m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart) >= AmmoRegenTime * Server()->TickSpeed() / 1000)
 			{
 				// Add some ammo
-				m_aWeapons[m_ActiveWeapon].m_Ammo = min(m_aWeapons[m_ActiveWeapon].m_Ammo + 1, 10);
+				m_aWeapons[m_ActiveWeapon].m_Ammo = min(m_aWeapons[m_ActiveWeapon].m_Ammo + 1, (gCTF) ? g_Config.m_SvGrenadeAmmo : 10);
 				m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart = -1;
 			}
 		}
@@ -482,19 +540,6 @@ bool CCharacter::GiveWeapon(int Weapon, int Ammo)
 	{
 		m_aWeapons[Weapon].m_Got = true;
 		m_aWeapons[Weapon].m_Ammo = min(g_pData->m_Weapons.m_aId[Weapon].m_Maxammo, Ammo);
-		m_ActiveWeapon = Weapon;
-		m_LastWeapon = Weapon;
-		return true;
-	}
-	return false;
-}
-
-bool CCharacter::TakeWeapon(int Weapon)
-{
-	if(m_aWeapons[Weapon].m_Got)
-	{
-		m_aWeapons[Weapon].m_Got = false;
-		m_aWeapons[Weapon].m_Ammo = 0;
 		return true;
 	}
 	return false;
@@ -518,8 +563,17 @@ void CCharacter::SetEmote(int Emote, int Tick)
 	m_EmoteStop = Tick;
 }
 
+void CCharacter::SetEmoteFix(int Emote, int Tick)
+{
+	m_pPlayer->m_SetEmoteType = Emote;
+	m_pPlayer->m_SetEmoteStop = Tick;
+}
+
 void CCharacter::OnPredictedInput(CNetObj_PlayerInput *pNewInput)
 {
+	if(m_FreezeTicks || m_DeepFreeze)
+		return;
+
 	// check for changes
 	if(mem_comp(&m_Input, pNewInput, sizeof(CNetObj_PlayerInput)) != 0)
 		m_LastAction = Server()->Tick();
@@ -535,6 +589,9 @@ void CCharacter::OnPredictedInput(CNetObj_PlayerInput *pNewInput)
 
 void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 {
+	if(m_FreezeTicks || m_DeepFreeze)
+		return;
+
 	mem_copy(&m_LatestPrevInput, &m_LatestInput, sizeof(m_LatestInput));
 	mem_copy(&m_LatestInput, pNewInput, sizeof(m_LatestInput));
 
@@ -574,17 +631,63 @@ void CCharacter::Tick()
 		m_pPlayer->m_ForceBalanced = false;
 	}
 
-	bool beforeHooked = (m_Core.m_HookedPlayer != -1);
+	if(m_FreezeTicks)
+	{
+		// unfreeze player/automelt
+		m_FreezeTicks--;
+		if(m_FreezeTicks <= 0)
+			Melt(-1);
+
+		//Melting
+		if(GameServer()->m_pController->IsIFreeze())
+		{
+			bool FoundMelter = false;
+			CCharacter *apCloseChars[MAX_CLIENTS];
+			int Num = GameServer()->m_World.FindEntities(m_Pos, g_Config.m_SvIFreezeMeltRange, (CEntity**)apCloseChars, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
+			for(int i = 0; i < Num; i++)
+			{
+				if(!apCloseChars[i]->IsAlive() || apCloseChars[i] == this || apCloseChars[i]->Frozen())
+					continue;
+
+				if(apCloseChars[i]->GetPlayer()->GetTeam() == m_pPlayer->GetTeam())
+				{
+					m_MeltTicks++;
+					FoundMelter = true;
+					// Send "thawed" on half of melttime
+					if(m_MeltTicks == (int)(Server()->TickSpeed()*g_Config.m_SvIFreezeMeltTime*0.0005f))
+						GameServer()->SendBroadcast("You are being thawed", m_pPlayer->GetCID());
+					else if(m_MeltTicks >= Server()->TickSpeed()*g_Config.m_SvIFreezeMeltTime*0.001f)
+						Melt(apCloseChars[i]->GetPlayer()->GetCID());
+					break;
+				}
+			}
+			// set counter to 0 if melter went away or no melter found
+			if(!FoundMelter)
+				m_MeltTicks = 0;
+		}
+	}
+
+	if(g_Config.m_SvSpawnprotection)
+	{
+		if(m_SpawnProtectTick > Server()->Tick())
+		{
+			// All 100ms
+			if(Server()->Tick() % 5 == 0)
+			{
+				char aBuf[64];
+				str_format(aBuf, sizeof(aBuf), "Spawnprotection for %.1f sec.", (float)(m_SpawnProtectTick - Server()->Tick())/Server()->TickSpeed());
+				GameServer()->SendBroadcast(aBuf, m_pPlayer->GetCID());
+			}
+		}
+		else if(m_SpawnProtectTick == Server()->Tick())
+			GameServer()->SendBroadcast("", m_pPlayer->GetCID());
+	}
+
+	if((g_Config.m_SvAnticamper == 1) || (g_Config.m_SvAnticamper == 2 && GameServer()->m_pController->IsInstagib()))
+		Anticamper();
+
 	m_Core.m_Input = m_Input;
 	m_Core.Tick(true);
-	
-	if(g_Config.m_SvHook && g_Config.m_SvHook != 3 /*3 = HOOK AND WEAPON*/ && m_Core.m_HookedPlayer != -1 && !beforeHooked)
-	{
-	
-		GameServer()->m_apPlayers[m_Core.m_HookedPlayer]->GetCharacter()->TakeDamage( vec2(0,0), g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
-					m_pPlayer->GetCID(), WEAPON_WORLD);
-	
-	}
 
 	// handle death-tiles and leaving gamelayer
 	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
@@ -729,6 +832,16 @@ void CCharacter::Die(int Killer, int Weapon)
 		m_pPlayer->GetCID(), Server()->ClientName(m_pPlayer->GetCID()), Weapon, ModeSpecial);
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
 
+	if(GameServer()->m_pController->IsInstagib())
+	{
+		if(GameServer()->GetPlayerChar(Killer) && Killer != m_pPlayer->GetCID())
+			GameServer()->GetPlayerChar(Killer)->AddSpree();
+		EndSpree(Killer);
+	}
+	m_pPlayer->m_Stats.m_Deaths++;
+	if(GameServer()->m_apPlayers[Killer] && Killer != m_pPlayer->GetCID())
+		GameServer()->m_apPlayers[Killer]->m_Stats.m_Kills++;
+
 	// send the kill message
 	CNetMsg_Sv_KillMsg Msg;
 	Msg.m_Killer = Killer;
@@ -740,20 +853,11 @@ void CCharacter::Die(int Killer, int Weapon)
 	// a nice sound
 	GameServer()->CreateSound(m_Pos, SOUND_PLAYER_DIE);
 
-	// this is for auto respawn after 3 secs
-	m_pPlayer->m_DieTick = Server()->Tick();
+	if(GameServer()->m_pController->IsIFreeze() && Weapon != WEAPON_GAME && Weapon != WEAPON_WORLD)
+		return;
 
-	m_Alive = false;
-	GameServer()->m_World.RemoveEntity(this);
-	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
-	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
-}
-
-void CCharacter::VoidDie()
-{
-	// a nice sound
-	GameServer()->CreateSound(m_Pos, SOUND_PLAYER_DIE);
-
+	// Unfreeze if frozen
+	m_FreezeTicks = 0;
 	// this is for auto respawn after 3 secs
 	m_pPlayer->m_DieTick = Server()->Tick();
 
@@ -770,50 +874,79 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 	if(GameServer()->m_pController->IsFriendlyFire(m_pPlayer->GetCID(), From) && !g_Config.m_SvTeamdamage)
 		return false;
 
+	if(m_SpawnProtectTick > Server()->Tick() || (GameServer()->GetPlayerChar(From) && GameServer()->GetPlayerChar(From)->Spawnprotected()))
+		return false;
+
+	/* TW+ */
+	if(GameServer()->m_pController->IsInstagib())
+	{
+		if((GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_GCTF) && g_Config.m_SvGrenadeMinDamage > Dmg)
+			return false;
+
+		if((From == m_pPlayer->GetCID()) || (Weapon == WEAPON_GAME))
+		{
+			if(Weapon == WEAPON_GRENADE)
+				m_pPlayer->m_Stats.m_Rocketjumps++;
+			return false;
+		}
+		else if(g_Config.m_SvHookKill && (!GameWorld()->m_Core.m_apCharacters[From] || GameWorld()->m_Core.m_apCharacters[From]->m_HookedPlayer != m_pPlayer->GetCID()))
+			return false;	
+		if(GameServer()->m_pController->IsIFreeze() && Frozen())
+			return false;
+
+		m_Health = 0;
+		m_Armor = 0;
+	}
+	/* TW+ */
+
 	// m_pPlayer only inflicts half damage on self
 	if(From == m_pPlayer->GetCID())
-		return false;
-	
-	if(!GameServer()->m_apPlayers[From])
-		return false;
-	
-	if(g_Config.m_SvHook)
-	{
-		if(g_Config.m_SvHook == 3 /* WEAPON AND HOOK*/)
-		{			
-			if(!GameWorld()->m_Core.m_apCharacters[From] || GameWorld()->m_Core.m_apCharacters[From]->m_HookedPlayer != m_pPlayer->GetCID())
-				return false;
-		}
-		else if(g_Config.m_SvHook == 1 && Weapon != WEAPON_WORLD) /*ONLY HOOK */
-			return false;
-	}
-	
-		
-	if(Weapon == WEAPON_GRENADE && Dmg < 5)
-		return false;
-		
-	if(From < 0 && From > 15)
-		return false;
-		
-	if(m_pPlayer->m_IsWanted != true)
-		return false;
-		
-	if(GameServer()->m_apPlayers[From]->m_IsWanted)
-	{
-			m_pPlayer->m_Score -= g_Config.m_SvCatchpoints; //todo: fix the +1 bug
-			if(m_pPlayer->m_Score < 0)
-				m_pPlayer->m_Score = 0;
-	}
-	else
-	{		
-		//chance hanted
-		//GameServer()->m_apPlayers[From]->GetCharacter()->VoidDie();
-		GameServer()->m_apPlayers[From]->m_Score += g_Config.m_SvCatchpoints; //todo: fix the +1 bug
-		GameServer()->m_apPlayers[From]->m_IsWanted = true;
-		m_pPlayer->m_IsWanted = false;	
-	}
+		Dmg = max(1, Dmg/2);
+
 	m_DamageTaken++;
+
+	if(!GameServer()->m_pController->IsInstagib())
+	{
+		// create healthmod indicator
+		if(Server()->Tick() < m_DamageTakenTick+25)
+		{
+			// make sure that the damage indicators doesn't group together
+			GameServer()->CreateDamageInd(m_Pos, m_DamageTaken*0.25f, Dmg);
+		}
+		else
+		{
+			m_DamageTaken = 0;
+			GameServer()->CreateDamageInd(m_Pos, 0, Dmg);
+		}
+	}
+
+	if(Dmg)
+	{
+		if(m_Armor)
+		{
+			if(Dmg > 1)
+			{
+				m_Health--;
+				Dmg--;
+			}
+
+			if(Dmg > m_Armor)
+			{
+				Dmg -= m_Armor;
+				m_Armor = 0;
+			}
+			else
+			{
+				m_Armor -= Dmg;
+				Dmg = 0;
+			}
+		}
+
+		m_Health -= Dmg;
+	}
+
 	m_DamageTakenTick = Server()->Tick();
+
 	// do damage Hit sound
 	if(From >= 0 && From != m_pPlayer->GetCID() && GameServer()->m_apPlayers[From])
 	{
@@ -826,8 +959,10 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 		GameServer()->CreateSound(GameServer()->m_apPlayers[From]->m_ViewPos, SOUND_HIT, Mask);
 	}
 
+	m_pPlayer->m_Stats.m_Hits++;
+
 	// check for death
-	/*if(false)
+	if(m_Health <= 0)
 	{
 		Die(From, Weapon);
 
@@ -843,7 +978,7 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 		}
 
 		return false;
-	}*/
+	}
 
 	if (Dmg > 2)
 		GameServer()->CreateSound(m_Pos, SOUND_PLAYER_PAIN_LONG);
@@ -860,6 +995,12 @@ void CCharacter::Snap(int SnappingClient)
 {
 	if(NetworkClipped(SnappingClient))
 		return;
+
+	if(g_Config.m_SvSpawnprotection && m_SpawnProtectTick >= Server()->Tick() && m_pPlayer->GetCID() != SnappingClient)
+	{
+		if(15 - ((m_SpawnProtectTick - Server()->Tick())%(15)) < 5)
+			return;
+	}
 
 	CNetObj_Character *pCharacter = static_cast<CNetObj_Character *>(Server()->SnapNewItem(NETOBJTYPE_CHARACTER, m_pPlayer->GetCID(), sizeof(CNetObj_Character)));
 	if(!pCharacter)
@@ -885,8 +1026,13 @@ void CCharacter::Snap(int SnappingClient)
 		m_EmoteType = EMOTE_NORMAL;
 		m_EmoteStop = -1;
 	}
+	if(m_pPlayer->m_SetEmoteStop < Server()->Tick())
+	{
+		m_pPlayer->m_SetEmoteType = EMOTE_NORMAL;
+		m_pPlayer->m_SetEmoteStop = -1;
+	}
 
-	pCharacter->m_Emote = m_EmoteType;
+	pCharacter->m_Emote = (m_EmoteType == EMOTE_NORMAL) ? m_pPlayer->m_SetEmoteType : m_EmoteType;
 
 	pCharacter->m_AmmoCount = 0;
 	pCharacter->m_Health = 0;
@@ -900,8 +1046,8 @@ void CCharacter::Snap(int SnappingClient)
 	if(m_pPlayer->GetCID() == SnappingClient || SnappingClient == -1 ||
 		(!g_Config.m_SvStrictSpectateMode && m_pPlayer->GetCID() == GameServer()->m_apPlayers[SnappingClient]->m_SpectatorID))
 	{
-		pCharacter->m_Health = m_Health;
-		pCharacter->m_Armor = m_Armor;
+		pCharacter->m_Health = (m_FreezeTicks) ? (m_FreezeTicks/Server()->TickSpeed())/10 : m_Health;
+		pCharacter->m_Armor = (m_FreezeTicks) ? (m_FreezeTicks/Server()->TickSpeed()) % 10 +1 : m_Armor;
 		if(m_aWeapons[m_ActiveWeapon].m_Ammo > 0)
 			pCharacter->m_AmmoCount = m_aWeapons[m_ActiveWeapon].m_Ammo;
 	}
@@ -913,17 +1059,182 @@ void CCharacter::Snap(int SnappingClient)
 	}
 
 	pCharacter->m_PlayerFlags = GetPlayer()->m_PlayerFlags;
-	
-	if(g_Config.m_SvWeapon == WEAPON_NINJA && GetPlayer()->m_IsWanted)
-	{
-		static int id = Server()->SnapNewID();
-		CNetObj_Flag *pFlag = (CNetObj_Flag *)Server()->SnapNewItem(NETOBJTYPE_FLAG, id, sizeof(CNetObj_Flag));
-			if(!pFlag)
-				return;
+}
 
-			pFlag->m_X = (int)m_Pos.x;
-			pFlag->m_Y = (int)m_Pos.y;
-			pFlag->m_Team = 0;
-	
+int CCharacter::Anticamper()
+{
+	if(GameServer()->m_World.m_Paused || Frozen())
+	{
+		m_CampTick = -1;
+		m_SentCampMsg = false;
+		return 0;
 	}
+
+	int AnticamperTime = g_Config.m_SvAnticamperTime;
+	int AnticamperRange = g_Config.m_SvAnticamperRange;
+
+	if(m_CampTick == -1)
+	{
+		m_CampPos = m_Pos;
+		m_CampTick = Server()->Tick() + Server()->TickSpeed()*AnticamperTime;
+	}
+
+	// Check if the player is moving
+	if((m_CampPos.x - m_Pos.x >= (float)AnticamperRange || m_CampPos.x - m_Pos.x <= -(float)AnticamperRange) ||
+		(m_CampPos.y - m_Pos.y >= (float)AnticamperRange || m_CampPos.y - m_Pos.y <= -(float)AnticamperRange))
+	{
+		m_CampTick = -1;
+	}
+
+	// Send warning to the player
+	if(m_CampTick <= Server()->Tick() + Server()->TickSpeed() * AnticamperTime/2 && m_CampTick != -1 && !m_SentCampMsg)
+	{
+		GameServer()->SendBroadcast("ANTICAMPER: Move or die", m_pPlayer->GetCID());
+		m_SentCampMsg = true;
+	}
+
+	// Kill him
+	if((m_CampTick <= Server()->Tick()) && (m_CampTick > 0))
+	{
+		bool IsIFreeze = GameServer()->m_pController->IsIFreeze();
+		if(g_Config.m_SvAnticamperFreeze || IsIFreeze)
+		{
+			Freeze((IsIFreeze) ? g_Config.m_SvIFreezeAutomeltTime : g_Config.m_SvAnticamperFreeze);
+			GameServer()->SendBroadcast("You have been frozen due camping", m_pPlayer->GetCID());
+		}
+		else
+			Die(m_pPlayer->GetCID(), WEAPON_GAME);
+
+		m_CampTick = -1;
+		m_SentCampMsg = false;
+		return 1;
+	}
+	return 0;
+}
+
+void CCharacter::Freeze(int Secs)
+{
+	if(Secs < 0)
+		m_DeepFreeze = true;
+	else
+		m_FreezeTicks = Server()->TickSpeed() * Secs;
+	m_LastWeapon = m_ActiveWeapon;
+	m_ActiveWeapon = WEAPON_NINJA;
+	ResetInput();
+	GameServer()->CreateSound(m_Pos, SOUND_PLAYER_PAIN_LONG);
+}
+
+int CCharacter::Frozen()
+{
+	return (m_DeepFreeze) ? -1 : m_FreezeTicks;
+}
+
+void CCharacter::AddSpree()
+{
+	m_pPlayer->m_Spree++;
+	const int NumMsg = 5;
+	char aBuf[128];
+
+	if(m_pPlayer->m_Spree % g_Config.m_SvKillingspreeKills == 0)
+	{
+		static const char aaSpreeMsg[NumMsg][32] = { "is on a killing spree", "is on a rampage", "is dominating", "is unstoppable", "is godlike"};
+		int No = m_pPlayer->m_Spree/NumMsg-1;
+
+		str_format(aBuf, sizeof(aBuf), "%s %s with %d kills!", Server()->ClientName(m_pPlayer->GetCID()), aaSpreeMsg[(No > NumMsg-1) ? NumMsg-1 : No], m_pPlayer->m_Spree);
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+
+	if((m_pPlayer->m_Spree >= g_Config.m_SvKillingspreeKills) && g_Config.m_SvKillingspreeAward &&
+			(GameServer()->m_pController->IsIFreeze() || !g_Config.m_SvKillingspreeIFreeze) && !m_pPlayer->m_GotAward)
+	{
+		m_pPlayer->m_GotAward = true;
+		str_format(aBuf, sizeof(aBuf), "%s got the killingspree award", Server()->ClientName(m_pPlayer->GetCID()));
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+}
+
+void CCharacter::EndSpree(int Killer)
+{
+	if(m_pPlayer->m_Spree >= g_Config.m_SvKillingspreeKills)
+	{
+		GameServer()->CreateSound(m_Pos, SOUND_GRENADE_EXPLODE);
+		GameServer()->CreateExplosion(m_Pos, m_pPlayer->GetCID(), WEAPON_RIFLE, true);
+
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "%s %d-kills killing spree was ended by %s", Server()->ClientName(m_pPlayer->GetCID()), m_pPlayer->m_Spree, Server()->ClientName(Killer));
+		GameServer()->SendChat(-1, CGameContext::CHAT_ALL, aBuf);
+	}
+	m_pPlayer->m_GotAward = false;
+	m_pPlayer->m_Spree = 0;
+}
+
+void CCharacter::KillChar()
+{
+	// we got to wait 0.5 secs before respawning
+	m_pPlayer->m_RespawnTick = Server()->Tick()+Server()->TickSpeed()/2;
+
+	// this is for auto respawn after 3 secs
+	m_pPlayer->m_DieTick = Server()->Tick();
+		m_Alive = false;
+	GameServer()->m_World.RemoveEntity(this);
+	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
+	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
+
+}
+
+void CCharacter::Melt(int MelterID)
+{
+	// Unfreeze
+	m_FreezeTicks = 0;
+	m_DeepFreeze = false;
+	m_ActiveWeapon = m_LastWeapon;
+	m_MeltTicks = 0;
+
+	if(GameServer()->IsValidCID(MelterID))
+	{
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "You melted %s", Server()->ClientName(m_pPlayer->GetCID()));
+		GameServer()->SendBroadcast(aBuf, MelterID);
+		str_format(aBuf, sizeof(aBuf), "%s melted you", Server()->ClientName(MelterID));
+		GameServer()->SendBroadcast(aBuf, m_pPlayer->GetCID());
+
+		GameServer()->m_apPlayers[MelterID]->m_Score++;
+		if(g_Config.m_SvLoltextShow)
+			GameServer()->CreateLolText(GameServer()->GetPlayerChar(MelterID), "+1");
+	}
+
+	if(GameServer()->m_pController->IsIFreeze())
+	{
+		GameServer()->CreateSound(m_Pos, SOUND_GRENADE_EXPLODE);
+		if(g_Config.m_SvIFreezeMeltRespawn)
+			KillChar();
+	}
+}
+
+bool CCharacter::TakeWeapon(int Weapon)
+{
+	m_aWeapons[Weapon].m_Got = false;
+	//if active weapon search another
+	if(m_ActiveWeapon == Weapon)
+	{
+		int k = 0;
+		for(int i = 0; i < NUM_WEAPONS-1; i++)
+			if(m_aWeapons[i].m_Got)
+			{
+				k = i;
+				break;
+			}
+		//if no weapon found give and set default weapon
+		if(k == 0)
+			GiveWeapon(WEAPON_HAMMER, 0);
+		SetWeapon(k);
+
+		return false;
+	}
+	return true;
+}
+
+bool CCharacter::Spawnprotected()
+{
+	return m_SpawnProtectTick > Server()->Tick();
 }

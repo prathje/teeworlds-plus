@@ -1203,6 +1203,10 @@ int str_isspace(char c);
 char str_uppercase(char c);
 unsigned str_quickhash(const char *str);
 
+int str_isupper(int c);
+int str_islower(int c);
+int str_tolower(int c);
+
 /*
 	Function: gui_messagebox
 		Display plain OS-dependent message box

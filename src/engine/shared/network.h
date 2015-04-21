@@ -244,6 +244,7 @@ public:
 // server side
 class CNetServer
 {
+public:
 	struct CSlot
 	{
 	public:

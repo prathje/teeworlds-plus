@@ -14,6 +14,7 @@
 #include "gamecontroller.h"
 #include "gameworld.h"
 #include "player.h"
+#include "mute.h"
 
 /*
 	Tick
@@ -36,6 +37,7 @@
 			All players (CPlayer::snap)
 
 */
+
 class CGameContext : public IGameServer
 {
 	IServer *m_pServer;
@@ -65,6 +67,20 @@ class CGameContext : public IGameServer
 	static void ConVote(IConsole::IResult *pResult, void *pUserData);
 	static void ConchainSpecialMotdupdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
+	static void ConFreeze(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnFreeze(IConsole::IResult *pResult, void *pUserData);
+	static void ConMuteSpec(IConsole::IResult *pResult, void *pUserData);
+	static void ConStop(IConsole::IResult *pResult, void *pUserData);
+	static void ConGo(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetName(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetClan(IConsole::IResult *pResult, void *pUserData);
+	static void ConKill(IConsole::IResult *pResult, void *pUserData);
+#ifdef USECHEATS
+	static void ConGive(IConsole::IResult *pResult, void *pUserData);
+	static void ConTakeWeapon(IConsole::IResult *pResult, void *pUserData);
+	static void ConTeleport(IConsole::IResult *pResult, void *pUserData);
+#endif
+
 	CGameContext(int Resetting);
 	void Construct(int Resetting);
 
@@ -88,6 +104,7 @@ public:
 
 	// helper functions
 	class CCharacter *GetPlayerChar(int ClientID);
+	inline bool IsValidCID(int CID) { return (CID >= 0) && (CID < MAX_CLIENTS) && m_apPlayers[CID]; }
 
 	int m_LockTeams;
 
@@ -97,6 +114,10 @@ public:
 	void SendVoteSet(int ClientID);
 	void SendVoteStatus(int ClientID, int Total, int Yes, int No);
 	void AbortVoteKickOnDisconnect(int ClientID);
+
+	int CreateLolText(CEntity *pParent, bool Follow, vec2 Pos, vec2 Vel, int Lifespan, const char *pText);
+	int CreateLolText(CEntity *pParent, const char *pText);
+	void DestroyLolText(int TextID);
 
 	int m_VoteCreator;
 	int64 m_VoteCloseTime;
@@ -134,6 +155,8 @@ public:
 		CHAT_RED=0,
 		CHAT_BLUE=1
 	};
+
+	CMute m_Mute;
 
 	// network
 	void SendChatTarget(int To, const char *pText);
@@ -174,6 +197,14 @@ public:
 	virtual const char *GameType();
 	virtual const char *Version();
 	virtual const char *NetVersion();
+
+	bool m_SpecMuted;
+	bool ShowCommand(int ClientID, CPlayer* pPlayer, const char* pMessage, int *pTeam);
+	//Helpers
+	bool CanExec(int, const char*);
+	int ParsePlayerName(char* pMsg, int *ClientID);
+	int StrLeftComp(const char *pOrigin, const char *pSub);
+	bool CheckForCapslock(const char *pStr);
 };
 
 inline int CmaskAll() { return -1; }
