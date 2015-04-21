@@ -164,4 +164,8 @@ MACRO_CONFIG_INT(SvNetworkClippingX, sv_net_clipping_x, 1000, 0, 10000, CFGFLAG_
 MACRO_CONFIG_INT(SvNetworkClippingY, sv_net_clipping_y, 800, 0, 10000, CFGFLAG_SERVER, "network clipping value y")
 MACRO_CONFIG_INT(SvNetworkClippingDist, sv_net_clipping_dist, 1100, 0, 10000, CFGFLAG_SERVER, "network clipping value dist")
 
+
+
+MACRO_CONFIG_INT(SvShowStats, sv_show_stats, 1, 0, 1, CFGFLAG_SERVER, "show the stats of each playing player at game ending")
+
 #endif

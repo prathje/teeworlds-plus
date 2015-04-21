@@ -2044,6 +2044,33 @@ bool CGameContext::IsClientPlayer(int ClientID)
 	return m_apPlayers[ClientID] && m_apPlayers[ClientID]->GetTeam() == TEAM_SPECTATORS ? false : true;
 }
 
+void CGameContext::ShowStats() {
+	
+	if(!g_Config.m_SvShowStats)
+		return;     
+	
+	char aaBuf[5][256];
+	CPlayer *pP = 0;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		pP = m_apPlayers[i];
+		if(pP && pP->m_IsReady && pP->GetTeam() != TEAM_SPECTATORS) {
+		
+			str_format(aaBuf[0], sizeof(aaBuf[0]), "--- Statistics %s---", Server()->ClientName(i));
+			str_format(aaBuf[1], sizeof(aaBuf[1]), "Total Shots: %d", pP->m_Stats.m_TotalShots);
+			str_format(aaBuf[2], sizeof(aaBuf[2]), "Hit/Shots (without RJ): %.2f", (pP->m_Stats.m_TotalShots-pP->m_Stats.m_Rocketjumps > 0) ? ((float) pP->m_Stats.m_Kills / (float) (pP->m_Stats.m_TotalShots-pP->m_Stats.m_Rocketjumps)) : 0);
+			str_format(aaBuf[3], sizeof(aaBuf[3]), "Kills: %d, Deaths: %d", pP->m_Stats.m_Kills, pP->m_Stats.m_Deaths);
+			str_format(aaBuf[4], sizeof(aaBuf[4]), "K/D: %.2f, RJ: %d", (pP->m_Stats.m_Deaths > 0) ? ((float) pP->m_Stats.m_Kills / (float) pP->m_Stats.m_Deaths) : 0, pP->m_Stats.m_Rocketjumps);
+
+			for (int i = 0; i < 5; i++)
+				SendChat(-1, CGameContext::CHAT_ALL, aaBuf[i]);
+		
+		}
+			
+	}
+	
+}
+
 const char *CGameContext::GameType() { return m_pController && m_pController->m_pGameType ? m_pController->m_pGameType : ""; }
 const char *CGameContext::Version() { return GAME_VERSION; }
 const char *CGameContext::NetVersion() { return GAME_NETVERSION; }

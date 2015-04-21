@@ -188,6 +188,7 @@ void IGameController::EndRound()
 	m_GameOverTick = Server()->Tick();
 	m_SuddenDeath = 0;
 	GameServer()->m_SpecMuted = false;
+	GameServer()->ShowStats();
 	SaveStats();
 }
 
