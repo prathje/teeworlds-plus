@@ -303,14 +303,61 @@ CServer::CServer() : m_DemoRecorder(&m_SnapshotDelta)
 	Init();
 }
 
+static const char *StrUTF8Ltrim(const char *pStr)
+{
+	while(*pStr)
+	{
+		const char *pStrOld = pStr;
+		int Code = str_utf8_decode(&pStr);
+
+		// check if unicode is not empty
+		if(Code > 0x20 && Code != 0xA0 && Code != 0x034F && (Code < 0x2000 || Code > 0x200F) && (Code < 0x2028 || Code > 0x202F) &&
+			(Code < 0x205F || Code > 0x2064) && (Code < 0x206A || Code > 0x206F) && (Code < 0xFE00 || Code > 0xFE0F) &&
+			Code != 0xFEFF && (Code < 0xFFF9 || Code > 0xFFFC))
+		{
+			return pStrOld;
+		}
+	}
+	return pStr;
+}
+
+static void StrUTF8Rtrim(char *pStr)
+{
+	const char *p = pStr;
+	const char *pEnd = 0;
+	while(*p)
+	{
+		const char *pStrOld = p;
+		int Code = str_utf8_decode(&p);
+
+		// check if unicode is not empty
+		if(Code > 0x20 && Code != 0xA0 && Code != 0x034F && (Code < 0x2000 || Code > 0x200F) && (Code < 0x2028 || Code > 0x202F) &&
+			(Code < 0x205F || Code > 0x2064) && (Code < 0x206A || Code > 0x206F) && (Code < 0xFE00 || Code > 0xFE0F) &&
+			Code != 0xFEFF && (Code < 0xFFF9 || Code > 0xFFFC))
+		{
+			pEnd = 0;
+		}
+		else if(pEnd == 0)
+			pEnd = pStrOld;
+	}
+	if(pEnd != 0)
+		*(const_cast<char *>(pEnd)) = 0;
+}
 
 int CServer::TrySetClientName(int ClientID, const char *pName)
 {
+	
 	char aTrimmedName[64];
 
 	// trim the name
-	str_copy(aTrimmedName, StrLtrim(pName), sizeof(aTrimmedName));
-	StrRtrim(aTrimmedName);
+	if(g_Config.m_SvCleanName){
+		str_copy(aTrimmedName, StrLtrim(pName), sizeof(aTrimmedName));
+		StrRtrim(aTrimmedName);
+	}
+	else {
+		str_copy(aTrimmedName, StrUTF8Ltrim(pName), sizeof(aTrimmedName));
+		StrUTF8Rtrim(aTrimmedName);
+	}
 
 	// check for empty names
 	if(!aTrimmedName[0])
@@ -341,7 +388,8 @@ int CServer::TrySetClientName(int ClientID, const char *pName)
 
 
 void CServer::SetClientName(int ClientID, const char *pName)
-{
+{	
+
 	if(ClientID < 0 || ClientID >= MAX_CLIENTS || m_aClients[ClientID].m_State < CClient::STATE_READY)
 		return;
 
@@ -352,12 +400,13 @@ void CServer::SetClientName(int ClientID, const char *pName)
 	str_copy(aCleanName, pName, sizeof(aCleanName));
 
 	// clear name
-	for(char *p = aCleanName; *p; ++p)
-	{
-		if(*p < 32)
-			*p = ' ';
+	if(g_Config.m_SvCleanName) {
+		for(char *p = aCleanName; *p; ++p)
+		{
+			if(*p < 32)
+				*p = ' ';
+		}
 	}
-
 	if(TrySetClientName(ClientID, aCleanName))
 	{
 		// auto rename
@@ -481,10 +530,10 @@ const char *CServer::ClientName(int ClientID)
 {
 	if(ClientID < 0 || ClientID >= MAX_CLIENTS || m_aClients[ClientID].m_State == CServer::CClient::STATE_EMPTY)
 		return "(invalid)";
-	if(m_aClients[ClientID].m_State == CServer::CClient::STATE_INGAME)
+	//if(m_aClients[ClientID].m_State == CServer::CClient::STATE_INGAME)
 		return m_aClients[ClientID].m_aName;
-	else
-		return "(connecting)";
+	//else
+	//	return "(connecting)";
 
 }
 
