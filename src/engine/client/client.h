@@ -220,6 +220,9 @@ public:
 
 	// ------ state handling -----
 	void SetState(int s);
+	
+	//account
+	void Login();
 
 	// called when the map is loaded and we should init for a new round
 	void OnEnterGame();
@@ -288,6 +291,7 @@ public:
 	static void Con_Record(IConsole::IResult *pResult, void *pUserData);
 	static void Con_StopRecord(IConsole::IResult *pResult, void *pUserData);
 	static void Con_AddDemoMarker(IConsole::IResult *pResult, void *pUserData);
+	static void Con_Login(IConsole::IResult *pResult, void *pUserData);
 	static void ConchainServerBrowserUpdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
 	void RegisterCommands();

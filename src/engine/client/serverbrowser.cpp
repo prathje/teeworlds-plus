@@ -16,6 +16,7 @@
 #include <engine/masterserver.h>
 
 #include <mastersrv/mastersrv.h>
+#include <accountsrv/accountsrv.h>
 
 #include "serverbrowser.h"
 
@@ -563,11 +564,10 @@ void CServerBrowser::Update(bool ForceResort)
 
 	// do server list requests
 	if(m_NeedRefresh && !m_pMasterServer->IsRefreshing())
-	{
-		NETADDR Addr;
+	{	
 		CNetChunk Packet;
+		NETADDR Addr;
 		int i;
-
 		m_NeedRefresh = 0;
 
 		mem_zero(&Packet, sizeof(Packet));

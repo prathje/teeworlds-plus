@@ -38,6 +38,7 @@
 #include <game/version.h>
 
 #include <mastersrv/mastersrv.h>
+#include <accountsrv/accountsrv.h>
 #include <versionsrv/versionsrv.h>
 
 #include "friends.h"
@@ -441,6 +442,52 @@ void CClient::SendInput()
 	SendMsgEx(&Msg, MSGFLAG_FLUSH);
 }
 
+//Account Login
+void CClient::Login() {
+	
+	//TODO hardcoded address move to config file
+	NETADDR Addr;
+	Addr.ip[0] = 84;
+	Addr.ip[1] = 200;
+	Addr.ip[2] = 240;
+	Addr.ip[3] = 143;
+	Addr.port = 8302;
+	Addr.type = NETTYPE_IPV4;
+	unsigned char aLoginData[sizeof(ACCOUNTSRV_LOGIN)+sizeof(NETADDR)+2*64];
+	unsigned char *pLoginData = &aLoginData[0];
+	//prepate Login message
+	CNetChunk Packet;
+	mem_zero(&Packet, sizeof(Packet));
+	Packet.m_ClientID = -1;
+	Packet.m_Flags = NETSENDFLAG_CONNLESS;
+	
+	Packet.m_pData = aLoginData;
+	Packet.m_Address = Addr;
+	//fill header
+	mem_copy(pLoginData, ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN));
+	pLoginData += sizeof(ACCOUNTSRV_LOGIN);
+	NetAddressToArray(&Addr, pLoginData);
+	pLoginData += sizeof(NETADDR);
+	
+	unsigned char length = str_length(g_Config.m_PlayerName);
+	*pLoginData = length;
+	pLoginData++;
+	mem_copy(pLoginData, g_Config.m_PlayerName, length);
+	pLoginData += length;
+	
+	length = str_length(g_Config.m_AccountPassword);
+	*pLoginData = length;
+	pLoginData++;
+	mem_copy(pLoginData, g_Config.m_AccountPassword, length);
+	pLoginData += length;
+	//calculate size
+	Packet.m_DataSize = (pLoginData) - (&aLoginData[0]);
+	
+	char aAddrStr[NETADDR_MAXSTRSIZE];
+	net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
+	dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
+	m_NetClient.Send(&Packet);
+}
 const char *CClient::LatestVersion()
 {
 	return m_aVersionStr;
@@ -504,6 +551,9 @@ void CClient::EnterGame()
 {
 	if(State() == IClient::STATE_DEMOPLAYBACK)
 		return;
+		
+	if(g_Config.m_AutoLogin)
+		Login();
 
 	// now we will wait for two snapshots
 	// to finish the connection
@@ -1006,6 +1056,22 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 			}
 			else
 				m_ServerBrowser.Set(pPacket->m_Address, IServerBrowser::SET_TOKEN, Token, &Info);
+		}
+	}
+	
+	//account response
+	
+	if(pPacket->m_DataSize == (int)sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1 &&
+		mem_comp(pPacket->m_pData, ACCOUNTSRV_LOGIN_RESPONSE, sizeof(ACCOUNTSRV_LOGIN_RESPONSE)) == 0)
+	{
+		unsigned char *pData = (unsigned char *)pPacket->m_pData;
+		int response = pData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE)];
+		if(response == ACCOUNT_STATUS_OK) {
+			m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login successful");
+		} else if(response == ACCOUNT_STATUS_BANNED) {
+			m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Your account is currently banned.");
+		} else {
+			m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login error.");
 		}
 	}
 }
@@ -2207,12 +2273,18 @@ void CClient::ServerBrowserUpdate()
 	m_ResortServerBrowser = true;
 }
 
+void CClient::Con_Login(IConsole::IResult *pResult, void *pUserData){
+	CClient *pSelf = (CClient *)pUserData;
+	pSelf->Login();
+}
+
 void CClient::ConchainServerBrowserUpdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
 {
 	pfnCallback(pResult, pCallbackUserData);
 	if(pResult->NumArguments())
 		((CClient *)pUserData)->ServerBrowserUpdate();
 }
+
 
 void CClient::RegisterCommands()
 {
@@ -2243,6 +2315,8 @@ void CClient::RegisterCommands()
 	m_pConsole->Register("add_demomarker", "", CFGFLAG_CLIENT, Con_AddDemoMarker, this, "Add demo timeline marker");
 	m_pConsole->Register("add_favorite", "s", CFGFLAG_CLIENT, Con_AddFavorite, this, "Add a server as a favorite");
 	m_pConsole->Register("remove_favorite", "s", CFGFLAG_CLIENT, Con_RemoveFavorite, this, "Remove a server from favorites");
+	
+	m_pConsole->Register("login", "", CFGFLAG_CLIENT, Con_Login, this, "Login using the current name and cl_account_pw data");
 
 	// used for server browser update
 	m_pConsole->Chain("br_filter_string", ConchainServerBrowserUpdate, this);

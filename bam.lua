@@ -238,6 +238,7 @@ function build(settings)
 
 	versionserver = Compile(settings, Collect("src/versionsrv/*.cpp"))
 	masterserver = Compile(settings, Collect("src/mastersrv/*.cpp"))
+	accountserver = Compile(settings, Collect("src/accountsrv/*.cpp"))
 	game_shared = Compile(settings, Collect("src/game/*.cpp"), nethash, network_source)
 	game_client = Compile(settings, CollectRecursive("src/game/client/*.cpp"), client_content_source)
 	game_server = Compile(settings, CollectRecursive("src/game/server/*.cpp"), server_content_source)
@@ -259,7 +260,7 @@ function build(settings)
 		tools[i] = Link(settings, toolname, Compile(settings, v), engine, zlib, pnglite)
 	end
 
-	-- build client, server, version server and master server
+	-- build client, server, version server, account server and master server
 	client_exe = Link(client_settings, "teeworlds", game_shared, game_client,
 		engine, client, game_editor, zlib, pnglite, wavpack,
 		client_link_other, client_osxlaunch)
@@ -274,7 +275,10 @@ function build(settings)
 
 	versionserver_exe = Link(server_settings, "versionsrv", versionserver,
 		engine, zlib)
-
+	
+	accountserver_exe = Link(server_settings, "accountsrv", accountserver,
+		engine, zlib)
+		
 	masterserver_exe = Link(server_settings, "mastersrv", masterserver,
 		engine, zlib)
 
@@ -284,6 +288,7 @@ function build(settings)
 	g = PseudoTarget("game".."_"..settings.config_name, client_exe, server_exe)
 
 	v = PseudoTarget("versionserver".."_"..settings.config_name, versionserver_exe)
+	a = PseudoTarget("accountserver".."_"..settings.config_name, accountserver_exe)
 	m = PseudoTarget("masterserver".."_"..settings.config_name, masterserver_exe)
 	t = PseudoTarget("tools".."_"..settings.config_name, tools)
 
