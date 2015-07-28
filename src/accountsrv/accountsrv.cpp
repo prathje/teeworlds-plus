@@ -19,9 +19,9 @@
 
 enum {
 	EXPIRE_TIME = 90,
+	RELOAD_TIME = 60,
 	MAX_PASSWORD_LENGTH = 64,
 	MAX_NAME_LENGTH = 64,
-	REQUEST_TIME_DIFF = 500,
 	MTU = 1400,
 	MAX_SERVERS_PER_PACKET=75,
 	MAX_PACKETS=16,
@@ -304,13 +304,13 @@ void Con_AddServer(IConsole::IResult *pResult, void *pUserData){
 }
 void RegisterCommands()
 {
-	m_pConsole->Register("add_account", "ss", CFGFLAG_ACCOUNT, 0, 0, "Add a player account");
-	m_pConsole->Register("add_server", "s", CFGFLAG_ACCOUNT, 0, 0, "Add a server");
+	m_pConsole->Register("add_account", "ss", CFGFLAG_ACCOUNT, Con_AddAccount, 0, "Add a player account");
+	m_pConsole->Register("add_server", "s", CFGFLAG_ACCOUNT, Con_AddServer, 0, "Add a server");
 }
 
 int main(int argc, const char **argv) // ignore_convention
 {
-	int64 LastBuild = 0;
+	int64 LastBuild = 0, LastReload = 0;
 	NETADDR BindAddr;
 
 	dbg_logger_stdout();
@@ -322,7 +322,7 @@ int main(int argc, const char **argv) // ignore_convention
 	IKernel *pKernel = IKernel::Create();
 	IStorage *pStorage = CreateStorage("Teeworlds", IStorage::STORAGETYPE_BASIC, argc, argv);
 	IConfig *pConfig = CreateConfig();
-	m_pConsole = CreateConsole(CFGFLAG_MASTER);
+	m_pConsole = CreateConsole(CFGFLAG_ACCOUNT);
 	
 	bool RegisterFail = !pKernel->RegisterInterface(pStorage);
 	RegisterFail |= !pKernel->RegisterInterface(m_pConsole);
@@ -370,7 +370,12 @@ int main(int argc, const char **argv) // ignore_convention
 		m_NetOp.Update();
 		
 		if(time_get()-LastBuild > time_freq()*5)
-		{
+		{	
+			if(time_get()-LastReload > time_freq()*RELOAD_TIME) {
+				m_pConsole->ExecuteFile("accounts.cfg");
+				LastReload = time_get();
+			}
+			
 			LastBuild = time_get();
 			UpdateAccounts();
 			BuildPackets();
