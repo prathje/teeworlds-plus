@@ -18,7 +18,7 @@ MACRO_CONFIG_INT(ConsoleOutputLevel, console_output_level, 0, 0, 2, CFGFLAG_CLIE
 //account
 MACRO_CONFIG_STR(AccountPassword, account_pw, 64, "", CFGFLAG_SAVE|CFGFLAG_CLIENT, "Account Password used for login")
 MACRO_CONFIG_INT(AutoLogin, auto_login, 1, 0, 1, CFGFLAG_SAVE|CFGFLAG_CLIENT, "Login automatically when joining a server.")
-MACRO_CONFIG_STR(AccountserverAdress, accountserver_address, 64, "84.200.240.143:8302", CFGFLAG_CLIENT|CFGFLAG_SAVE, "Account server address")
+MACRO_CONFIG_STR(AccountserverAdress, accountserver_address, 64, "84.200.240.143:8302", CFGFLAG_CLIENT|CFGFLAG_SERVER|CFGFLAG_SAVE, "Account server address")
 
 MACRO_CONFIG_INT(ClCpuThrottle, cl_cpu_throttle, 0, 0, 100, CFGFLAG_SAVE|CFGFLAG_CLIENT, "")
 MACRO_CONFIG_INT(ClEditor, cl_editor, 0, 0, 1, CFGFLAG_CLIENT, "")
@@ -98,6 +98,11 @@ MACRO_CONFIG_INT(SvRconMaxTries, sv_rcon_max_tries, 3, 0, 100, CFGFLAG_SERVER, "
 MACRO_CONFIG_INT(SvRconBantime, sv_rcon_bantime, 5, 0, 1440, CFGFLAG_SERVER, "The time a client gets banned if remote console authentication fails. 0 makes it just use kick")
 MACRO_CONFIG_INT(SvAutoDemoRecord, sv_auto_demo_record, 0, 0, 1, CFGFLAG_SERVER, "Automatically record demos")
 MACRO_CONFIG_INT(SvAutoDemoMax, sv_auto_demo_max, 10, 0, 1000, CFGFLAG_SERVER, "Maximum number of automatically recorded demos (0 = no limit)")
+
+//account
+MACRO_CONFIG_INT(SvAccountMaxRequests, sv_account_max_requests, 1, 1, 1000, CFGFLAG_SERVER, "Maximum number of request for a client authentication.")
+MACRO_CONFIG_INT(SvAccountRequestTime, sv_account_request_time, 500, 1, 300000, CFGFLAG_SERVER, "Time difference between two requests")
+MACRO_CONFIG_INT(SvUseAccounts, sv_accounts, 1, 0, 1, CFGFLAG_SERVER, "Enable/disable accounts")
 
 MACRO_CONFIG_STR(EcBindaddr, ec_bindaddr, 128, "localhost", CFGFLAG_ECON, "Address to bind the external console to. Anything but 'localhost' is dangerous")
 MACRO_CONFIG_INT(EcPort, ec_port, 0, 0, 0, CFGFLAG_ECON, "Port to use for the external console")

@@ -351,9 +351,18 @@ int CClient::SendMsgEx(CMsgPacker *pMsg, int Flags, bool System)
 
 void CClient::SendInfo()
 {
+	
 	CMsgPacker Msg(NETMSG_INFO);
 	Msg.AddString(GameClient()->NetVersion(), 128);
 	Msg.AddString(g_Config.m_Password, 128);
+		
+	//TODO Check if serveraddress is a registered server from the accountserver server list
+	//use account name here?
+	if(g_Config.m_AutoLogin) {
+		Login();
+		Msg.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
+	}
+	
 	SendMsgEx(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 }
 
@@ -447,39 +456,28 @@ void CClient::Login() {
 
 	NETADDR Addr;
 	net_addr_from_str(&Addr, g_Config.m_AccountserverAdress);
-	unsigned char aLoginData[sizeof(ACCOUNTSRV_LOGIN)+sizeof(NETADDR)+2*64];
-	unsigned char *pLoginData = &aLoginData[0];
-	//prepare Login message
+	
+	//prepare packet
+	CPacker packer;
+	packer.Reset();
+	packer.AddRaw(ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN));
+	PackNetAddress(&packer, &m_ServerAddress);
+	packer.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
+	packer.AddString(g_Config.m_AccountPassword, MAX_ACCOUNT_PASSWORD_LENGTH);
+
 	CNetChunk Packet;
 	mem_zero(&Packet, sizeof(Packet));
 	Packet.m_ClientID = -1;
 	Packet.m_Flags = NETSENDFLAG_CONNLESS;
-	
-	Packet.m_pData = aLoginData;
+	Packet.m_pData = packer.Data();
 	Packet.m_Address = Addr;
-	//fill header
-	mem_copy(pLoginData, ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN));
-	pLoginData += sizeof(ACCOUNTSRV_LOGIN);
-	NetAddressToArray(&Addr, pLoginData);
-	pLoginData += sizeof(NETADDR);
 	
-	unsigned char length = str_length(g_Config.m_PlayerName);
-	*pLoginData = length;
-	pLoginData++;
-	mem_copy(pLoginData, g_Config.m_PlayerName, length);
-	pLoginData += length;
-	
-	length = str_length(g_Config.m_AccountPassword);
-	*pLoginData = length;
-	pLoginData++;
-	mem_copy(pLoginData, g_Config.m_AccountPassword, length);
-	pLoginData += length;
-	//calculate size
-	Packet.m_DataSize = (pLoginData) - (&aLoginData[0]);
+	Packet.m_DataSize = packer.Size();
 	
 	char aAddrStr[NETADDR_MAXSTRSIZE];
 	net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
 	dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
+	
 	m_NetClient.Send(&Packet);
 }
 const char *CClient::LatestVersion()
@@ -546,9 +544,6 @@ void CClient::EnterGame()
 	if(State() == IClient::STATE_DEMOPLAYBACK)
 		return;
 		
-	if(g_Config.m_AutoLogin)
-		Login();
-
 	// now we will wait for two snapshots
 	// to finish the connection
 	SendEnterGame();
@@ -1071,7 +1066,7 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login error.");
 			}		
 		} else {
-			m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "account", "Received a login message from unknown source");
+			m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "account", "Received a login message from unknown source!");
 		}		
 	}
 }

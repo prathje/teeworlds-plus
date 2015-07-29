@@ -1,6 +1,6 @@
 /* (c) Patrick Rathje based on work by Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com. */
-#include <base/system.h>
+
 
 #include <base/tl/array.h>
 
@@ -20,8 +20,6 @@
 enum {
 	EXPIRE_TIME = 90,
 	RELOAD_TIME = 60,
-	MAX_PASSWORD_LENGTH = 64,
-	MAX_NAME_LENGTH = 64,
 	MTU = 1400,
 	MAX_SERVERS_PER_PACKET=75,
 	MAX_PACKETS=16,
@@ -34,8 +32,8 @@ struct CAccount {
 	int64 m_LastActive;
 	bool m_Banned;
 	bool m_Valid;
-	char m_Name[MAX_NAME_LENGTH];
-	char m_Password[MAX_PASSWORD_LENGTH];
+	char m_Name[MAX_ACCOUNT_NAME_LENGTH];
+	char m_Password[MAX_ACCOUNT_PASSWORD_LENGTH];
 };
 
 static array<CAccount> m_lAccounts;
@@ -217,7 +215,7 @@ void AddAccount(const char *pName, const char *pPassword, bool banned = false) {
 	
 	if(!acc) {
 		CAccount newAcc;
-		str_copy(newAcc.m_Name, pName, MAX_NAME_LENGTH);
+		str_copy(newAcc.m_Name, pName, MAX_ACCOUNT_NAME_LENGTH);
 		newAcc.m_Valid = false;
 		newAcc.m_Banned = banned;
 		newAcc.m_LastActive = 0;
@@ -228,10 +226,10 @@ void AddAccount(const char *pName, const char *pPassword, bool banned = false) {
 		dbg_msg("accountsrv", "updating acc: %s", pName);
 	}
 
-	str_copy(acc->m_Password, pPassword, MAX_PASSWORD_LENGTH);
+	str_copy(acc->m_Password, pPassword, MAX_ACCOUNT_PASSWORD_LENGTH);
 }
 
-int AccountStatus(char *pName, NETADDR *serverAddress) {
+int AccountStatus(const char *pName, NETADDR *serverAddress) {
 	//try to login with the name and password
 	CAccount *pAccount = GetAccount(pName);
 	
@@ -244,7 +242,7 @@ int AccountStatus(char *pName, NETADDR *serverAddress) {
 	return ACCOUNT_STATUS_ERROR;
 }
 
-int Login(char *pName, char *pPassword) {
+int Login(const char *pName, const char *pPassword) {
 	//try to login with the name and password
 	CAccount *pAccount = GetAccount(pName);
 	
@@ -373,6 +371,7 @@ int main(int argc, const char **argv) // ignore_convention
 		{	
 			if(time_get()-LastReload > time_freq()*RELOAD_TIME) {
 				m_pConsole->ExecuteFile("accounts.cfg");
+				m_pConsole->ExecuteFile("servers.cfg");
 				LastReload = time_get();
 			}
 			
@@ -420,93 +419,36 @@ int main(int argc, const char **argv) // ignore_convention
 			}
 			else if(Packet.m_DataSize >= sizeof(ACCOUNTSRV_LOGIN) &&
 				mem_comp(Packet.m_pData, ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN)) == 0) {
-					char aName[MAX_NAME_LENGTH];
-					char aPassword[MAX_PASSWORD_LENGTH];
-					NETADDR address;
-					int size = Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN);
-					//bad request
+					
+					CUnpacker unpacker;
+					unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
+					//we dont need the header
+					unpacker.GetRaw(sizeof(ACCOUNTSRV_LOGIN));
+					NETADDR address;					
+					UnpackNetAddress(&unpacker, &address);
+					const char *pName = unpacker.GetString(CUnpacker::SANITIZE_CC);
+					const char *pPassword = unpacker.GetString(CUnpacker::SANITIZE_CC);
+									
 					char aAddrStr[NETADDR_MAXSTRSIZE];
 					net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
-					unsigned char *pData = ((unsigned char*) Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN);
-					
-					if(size < sizeof(NETADDR) ) {
-						dbg_msg("accountsrv", "received bad login from: %s, packet too short for NETADDR", aAddrStr);	
-						continue;
-					}
-					
-					NetAddressFromArray(&address, pData);
-					
-					//console
 					char aAddrStr2[NETADDR_MAXSTRSIZE];
-					net_addr_str(&address, aAddrStr2, sizeof(aAddrStr2), true);
-					dbg_msg("accountsrv", "login: received address: %s", aAddrStr2);	
-					
-					pData += sizeof(NETADDR);
-					size -= sizeof(NETADDR);
-					
-					if(size <= 0) {
-						dbg_msg("accountsrv", "received bad login from: %s, no name length given", aAddrStr);	
+					net_addr_str(&address, aAddrStr2, sizeof(aAddrStr2), true);				
+					if(unpacker.Error() || str_length(pName) == 0 || str_length(pName) >= MAX_ACCOUNT_NAME_LENGTH || str_length(pPassword) == 0 || str_length(pPassword) >= MAX_ACCOUNT_PASSWORD_LENGTH) {
+						dbg_msg("accountsrv", "received bad login from: %s, %s, %s, %s", aAddrStr, pName, pPassword, aAddrStr2);	
 						continue;
 					}
-					
-					unsigned char nameLength = *pData;
-					size--;
-					
-					if(size < nameLength || nameLength == 0 || nameLength >= MAX_NAME_LENGTH) {
-						dbg_msg("accountsrv", "received bad login from: %s; the name has an invalid length. %d given", aAddrStr, nameLength);	
-						continue;
-					}
-					
-					//skip the size
-					pData++;
-					
-					//copy name
-					for(int i = 0; i < nameLength; ++i) {
-						aName[i] = *pData;
-						pData++;
-					}
-					//null termination
-					aName[nameLength] = 0;
-					
-					size -= nameLength;
-					
-					unsigned char pwLength = *pData;
-					size--;
-					
-					if(size < pwLength || pwLength == 0 || pwLength >= MAX_PASSWORD_LENGTH) {
-						dbg_msg("accountsrv", "received bad login from: %s; the password has an invalid length. %d given", aAddrStr, pwLength);	
-						continue;
-					}
-					
-					//skip the size
-					pData++;
-					
-					//copy password
-					for(int i = 0; i < pwLength; ++i) {
-						aPassword[i] = *pData;
-						pData++;
-					}
-					//null termination
-					aPassword[pwLength] = 0;
-					size -= pwLength;
-					
-					if(size != 0) {
-						dbg_msg("accountsrv", "received bad login from: %s; the size does not match. %d chars left", aAddrStr, size);	
-						continue;
-					}
-										
 					//check name and password
-					unsigned char response = Login(aName, aPassword);
+					unsigned char response = Login(pName, pPassword);
 					
 					if(response == ACCOUNT_STATUS_OK) {
-						CAccount *acc = GetAccount(aName);
+						CAccount *acc = GetAccount(pName);
 						acc->m_ServerAddress = address;
 						acc->m_Address = Packet.m_Address;
 						acc->m_Valid = true;
 						acc->m_LastActive = time_get();
 					}
 					
-					dbg_msg("accountsrv", "login response: name %s, response %d", aName, response);
+					dbg_msg("accountsrv", "login response: name %s, response %d", pName, response);
 					
 					static unsigned char aData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1];
 					mem_copy(aData, ACCOUNTSRV_LOGIN_RESPONSE, sizeof(ACCOUNTSRV_LOGIN_RESPONSE));
@@ -529,62 +471,39 @@ int main(int argc, const char **argv) // ignore_convention
 				net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
 				
 				if(server) {
-				
-					char aName[MAX_NAME_LENGTH];
-					unsigned char *pData = ((unsigned char*) Packet.m_pData)+sizeof(ACCOUNTSRV_REQUEST);
-					int size = Packet.m_DataSize-sizeof(ACCOUNTSRV_REQUEST);
-										
-					if(size <= 0) {
-						dbg_msg("accountsrv", "received bad request from: %s, no name length given", aAddrStr);	
+					
+					CUnpacker unpacker;
+					unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
+					unpacker.GetRaw(sizeof(ACCOUNTSRV_REQUEST));
+					NETADDR clientAddress;
+					UnpackNetAddress(&unpacker, &clientAddress);
+					const char *pName = unpacker.GetString();
+					
+					if(str_length(pName) == 0 || str_length(pName) >= MAX_ACCOUNT_NAME_LENGTH || unpacker.Error()) {
+						dbg_msg("accountsrv", "bad account request from: %s with name %s", aAddrStr, pName);
 						continue;
 					}
 					
-					unsigned char nameLength = *pData;
-					size--;
-					
-					if(size < nameLength || nameLength == 0 || nameLength >= MAX_NAME_LENGTH) {
-						dbg_msg("accountsrv", "received bad request from: %s; the name has an invalid length. %d given", aAddrStr, nameLength);	
-						continue;
-					}
-					
-					//skip the size
-					pData++;
-					
-					//copy name
-					for(int i = 0; i < nameLength; ++i) {
-						aName[i] = *pData;
-						pData++;
-					}
-					//null termination
-					aName[nameLength] = 0;
-					
-					size -= nameLength;
-					
-					if(size != 0) {
-						dbg_msg("accountsrv", "received bad request from: %s; the size does not match. %d chars left", aAddrStr, size);	
-						continue;
-					}
-					
-					int response = AccountStatus(aName, &Packet.m_Address);
-					
-					dbg_msg("accountsrv", "request response: server: %s, name %s, response %d", aAddrStr, aName, response);
-					
-					static unsigned char aData[sizeof(ACCOUNTSRV_REQUEST_RESPONSE) + 1];
-					mem_copy(aData, ACCOUNTSRV_REQUEST_RESPONSE, sizeof(ACCOUNTSRV_REQUEST_RESPONSE));
-					
-					aData[sizeof(ACCOUNTSRV_REQUEST_RESPONSE)] = response;
+					int response = AccountStatus(pName, &Packet.m_Address);
+					dbg_msg("accountsrv", "request response: server: %s, name %s, response %d", aAddrStr, pName, response);
+
+					CPacker packer;
+					packer.Reset();
+					packer.AddRaw(ACCOUNTSRV_REQUEST_RESPONSE, sizeof(ACCOUNTSRV_REQUEST_RESPONSE));
+					packer.AddString(pName, MAX_ACCOUNT_NAME_LENGTH);
+					packer.AddInt(response);
 					
 					CNetChunk p;
 					p.m_ClientID = -1;
 					p.m_Address = Packet.m_Address;
 					p.m_Flags = NETSENDFLAG_CONNLESS;
-					p.m_DataSize = sizeof(ACCOUNTSRV_REQUEST_RESPONSE) + 1;
-					p.m_pData = &aData;					
+					p.m_DataSize = packer.Size();
+					p.m_pData = packer.Data();					
 					m_NetOp.Send(&p);
 				
 				} else {
 					//bad request
-					dbg_msg("accountsrv", "bad account request from: %s", aAddrStr);
+					dbg_msg("accountsrv", "bad account request from not registered server: %s", aAddrStr);
 				}
 			}
 		}

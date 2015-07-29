@@ -3,10 +3,15 @@
 #ifndef ACCOUNTSRV_ACCOUNTSRV_H
 #define ACCOUNTSRV_ACCOUNTSRV_H
 
+#include <engine/shared/packer.h>
+#include <base/system.h>
+
 enum {
 	ACCOUNT_STATUS_OK = 0,
 	ACCOUNT_STATUS_ERROR,
-	ACCOUNT_STATUS_BANNED
+	ACCOUNT_STATUS_BANNED,
+	MAX_ACCOUNT_PASSWORD_LENGTH = 64,
+	MAX_ACCOUNT_NAME_LENGTH = 64,
 };
 static const int ACCOUNTSRV_PORT = 8302;
 
@@ -24,27 +29,25 @@ static const unsigned char ACCOUNTSRV_REQUEST[] = {255, 255, 255, 255, 'a', 'c',
 //response: name, int (success)
 static const unsigned char ACCOUNTSRV_REQUEST_RESPONSE[] = {255, 255, 255, 255, 'a', 'c', 'r', '!'};
 
-//convert netadress disgarding the endianess
-inline void NetAddressToArray(const NETADDR *pAdress, unsigned char p[]) {
-	for(int i = 0; i < 16; ++i) {
-		p[i] = pAdress->ip[i];	
+inline void UnpackNetAddress(CUnpacker *pUnpacker, NETADDR *pAddress) {
+	for(int i = 0; i < 16; i+=4) {
+		int combined = pUnpacker->GetInt();
+		pAddress->ip[i] = (unsigned char)((combined >> 24)&0xFF);
+		pAddress->ip[i+1] = (unsigned char)((combined >> 16)&0xFF);
+		pAddress->ip[i+2] = (unsigned char)((combined >> 8)&0xFF);
+		pAddress->ip[i+3] = (unsigned char)(combined&0xFF);		
 	}
-	p[16] = (unsigned char)((pAdress->port >> 24)&0xFF);
-	p[17] = (unsigned char)((pAdress->port >> 16)&0xFF);
-	p[18] = (unsigned char)((pAdress->port >> 8)&0xFF);
-	p[19] = (unsigned char)(pAdress->port&0xFF);
-	p[20] = (unsigned char)((pAdress->type >> 24)&0xFF);
-	p[21] = (unsigned char)((pAdress->type >> 16)&0xFF);
-	p[22] = (unsigned char)((pAdress->type >> 8)&0xFF);
-	p[23] = (unsigned char)(pAdress->type&0xFF);
+	pAddress->port = pUnpacker->GetInt();
+	pAddress->type = pUnpacker->GetInt();	
 }
 
-inline void NetAddressFromArray(NETADDR *pAdress, const unsigned char p[]) {
-	for(int i = 0; i < 16; ++i) {
-		pAdress->ip[i] = p[i];
+inline void PackNetAddress(CPacker *pPacker, const NETADDR *pAddress) {
+	for(int i = 0; i < 16; i+=4) {
+		int combined = (pAddress->ip[i] << 24) | (pAddress->ip[i+1] << 16) | (pAddress->ip[i+2] << 8) | (pAddress->ip[i+3]);
+		pPacker->AddInt(combined);
 	}
-	pAdress->port = (p[16]<<24) | (p[17]<<16) | (p[18]<<8) | p[19];
-	pAdress->type = (p[20]<<24) | (p[21]<<16) | (p[22]<<8) | p[23];
+	pPacker->AddInt(pAddress->port);
+	pPacker->AddInt(pAddress->type);
 }
 
 #endif

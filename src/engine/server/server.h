@@ -5,6 +5,7 @@
 
 #include <engine/server.h>
 
+#include <accountsrv/accountsrv.h>
 
 class CSnapIDPool
 {
@@ -85,7 +86,8 @@ public:
 		enum
 		{
 			STATE_EMPTY = 0,
-			STATE_AUTH,
+			STATE_ACCOUNT_VERIFICATION,
+			STATE_AUTH,			
 			STATE_CONNECTING,
 			STATE_READY,
 			STATE_INGAME,
@@ -116,6 +118,7 @@ public:
 		int m_CurrentInput;
 
 		char m_aName[MAX_NAME_LENGTH];
+		
 		char m_aClan[MAX_CLAN_LENGTH];
 		int m_Country;
 		int m_Score;
@@ -124,8 +127,14 @@ public:
 
 		const IConsole::CCommandInfo *m_pRconCmdToSend;
 
+		//account
+		char m_aAccountName[MAX_ACCOUNT_NAME_LENGTH];
+		int64 m_LastAccountRequestTime;
+		int m_NumAccountRequests;
 		void Reset();
 	};
+	
+	void AccountRequest(int ClientID);
 
 	CClient m_aClients[MAX_CLIENTS];
 
