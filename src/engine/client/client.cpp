@@ -444,18 +444,12 @@ void CClient::SendInput()
 
 //Account Login
 void CClient::Login() {
-	
-	//TODO hardcoded address move to config file
+
 	NETADDR Addr;
-	Addr.ip[0] = 84;
-	Addr.ip[1] = 200;
-	Addr.ip[2] = 240;
-	Addr.ip[3] = 143;
-	Addr.port = 8302;
-	Addr.type = NETTYPE_IPV4;
+	net_addr_from_str(&Addr, g_Config.m_AccountserverAdress);
 	unsigned char aLoginData[sizeof(ACCOUNTSRV_LOGIN)+sizeof(NETADDR)+2*64];
 	unsigned char *pLoginData = &aLoginData[0];
-	//prepate Login message
+	//prepare Login message
 	CNetChunk Packet;
 	mem_zero(&Packet, sizeof(Packet));
 	Packet.m_ClientID = -1;
@@ -1064,15 +1058,21 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 	if(pPacket->m_DataSize == (int)sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1 &&
 		mem_comp(pPacket->m_pData, ACCOUNTSRV_LOGIN_RESPONSE, sizeof(ACCOUNTSRV_LOGIN_RESPONSE)) == 0)
 	{
-		unsigned char *pData = (unsigned char *)pPacket->m_pData;
-		int response = pData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE)];
-		if(response == ACCOUNT_STATUS_OK) {
-			m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login successful");
-		} else if(response == ACCOUNT_STATUS_BANNED) {
-			m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Your account is currently banned.");
+		NETADDR acaddr;
+		net_addr_from_str(&acaddr, g_Config.m_AccountserverAdress);
+		if(net_addr_comp(&acaddr, &pPacket->m_Address) == 0) {
+			unsigned char *pData = (unsigned char *)pPacket->m_pData;
+			int response = pData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE)];
+			if(response == ACCOUNT_STATUS_OK) {
+				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login successful");
+			} else if(response == ACCOUNT_STATUS_BANNED) {
+				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Your account is currently banned.");
+			} else {
+				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login error.");
+			}		
 		} else {
-			m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login error.");
-		}
+			m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "account", "Received a login message from unknown source");
+		}		
 	}
 }
 
