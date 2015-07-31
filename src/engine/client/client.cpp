@@ -304,6 +304,8 @@ CClient::CClient() : m_DemoPlayer(&m_SnapshotDelta), m_DemoRecorder(&m_SnapshotD
 	m_RecivedSnapshots = 0;
 
 	m_VersionInfo.m_State = CVersionInfo::STATE_INIT;
+	
+	m_AccountStatus = ACCOUNT_STATUS_UNKNOWN;
 }
 
 // ----- send functions -----
@@ -455,7 +457,7 @@ void CClient::SendInput()
 void CClient::Login() {
 
 	NETADDR Addr;
-	net_addr_from_str(&Addr, g_Config.m_AccountserverAdress);
+	net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
 	
 	//prepare packet
 	CPacker packer;
@@ -952,6 +954,16 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 	{
 		// check for valid master server address
 		bool Valid = false;
+		
+		//account
+		//TODO: use multiple accountserver addresses
+		NETADDR Addr;
+		net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+		if(net_addr_comp(&pPacket->m_Address, &Addr) == 0)
+		{
+			Valid = true;
+		}
+		/*
 		for(int i = 0; i < IMasterServer::MAX_MASTERSERVERS; ++i)
 		{
 			if(m_pMasterServer->IsValid(i))
@@ -963,7 +975,7 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 					break;
 				}
 			}
-		}
+		}*/
 		if(!Valid)
 			return;
 
@@ -1054,10 +1066,11 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 		mem_comp(pPacket->m_pData, ACCOUNTSRV_LOGIN_RESPONSE, sizeof(ACCOUNTSRV_LOGIN_RESPONSE)) == 0)
 	{
 		NETADDR acaddr;
-		net_addr_from_str(&acaddr, g_Config.m_AccountserverAdress);
+		net_addr_from_str(&acaddr, g_Config.m_AccountserverAddress);
 		if(net_addr_comp(&acaddr, &pPacket->m_Address) == 0) {
 			unsigned char *pData = (unsigned char *)pPacket->m_pData;
 			int response = pData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE)];
+			m_AccountStatus = response;
 			if(response == ACCOUNT_STATUS_OK) {
 				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login successful");
 			} else if(response == ACCOUNT_STATUS_BANNED) {
@@ -1929,7 +1942,7 @@ void CClient::Run()
 		if(Input()->KeyPressed(KEY_LCTRL) && Input()->KeyPressed(KEY_LSHIFT) && Input()->KeyDown('g'))
 			g_Config.m_DbgGraphs ^= 1;
 
-		if(Input()->KeyPressed(KEY_LCTRL) && Input()->KeyPressed(KEY_LSHIFT) && Input()->KeyDown('e'))
+		if(g_Config.m_ClFullOptions && Input()->KeyPressed(KEY_LCTRL) && Input()->KeyPressed(KEY_LSHIFT) && Input()->KeyDown('e'))
 		{
 			g_Config.m_ClEditor = g_Config.m_ClEditor^1;
 			Input()->MouseModeRelative();

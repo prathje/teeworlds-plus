@@ -432,23 +432,23 @@ int main(int argc, const char **argv) // ignore_convention
 					char aAddrStr[NETADDR_MAXSTRSIZE];
 					net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
 					char aAddrStr2[NETADDR_MAXSTRSIZE];
-					net_addr_str(&address, aAddrStr2, sizeof(aAddrStr2), true);				
+					net_addr_str(&address, aAddrStr2, sizeof(aAddrStr2), true);
+					unsigned char response = ACCOUNT_STATUS_ERROR;
 					if(unpacker.Error() || str_length(pName) == 0 || str_length(pName) >= MAX_ACCOUNT_NAME_LENGTH || str_length(pPassword) == 0 || str_length(pPassword) >= MAX_ACCOUNT_PASSWORD_LENGTH) {
 						dbg_msg("accountsrv", "received bad login from: %s, %s, %s, %s", aAddrStr, pName, pPassword, aAddrStr2);	
-						continue;
 					}
-					//check name and password
-					unsigned char response = Login(pName, pPassword);
-					
-					if(response == ACCOUNT_STATUS_OK) {
-						CAccount *acc = GetAccount(pName);
-						acc->m_ServerAddress = address;
-						acc->m_Address = Packet.m_Address;
-						acc->m_Valid = true;
-						acc->m_LastActive = time_get();
-					}
-					
-					dbg_msg("accountsrv", "login response: name %s, response %d", pName, response);
+					else {
+						//check name and password
+						response = Login(pName, pPassword);						
+						if(response == ACCOUNT_STATUS_OK) {
+							CAccount *acc = GetAccount(pName);
+							acc->m_ServerAddress = address;
+							acc->m_Address = Packet.m_Address;
+							acc->m_Valid = true;
+							acc->m_LastActive = time_get();
+						}
+						dbg_msg("accountsrv", "login response: name %s, response %d", pName, response);
+					}		
 					
 					static unsigned char aData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1];
 					mem_copy(aData, ACCOUNTSRV_LOGIN_RESPONSE, sizeof(ACCOUNTSRV_LOGIN_RESPONSE));

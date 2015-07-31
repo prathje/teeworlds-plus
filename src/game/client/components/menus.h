@@ -13,6 +13,7 @@
 #include <game/client/component.h>
 #include <game/client/ui.h>
 
+#include <accountsrv/accountsrv.h>
 
 // compnent to fetch keypresses, override all other input
 class CMenusKeyBinder : public CComponent

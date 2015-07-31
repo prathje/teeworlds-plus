@@ -575,7 +575,16 @@ void CServerBrowser::Update(bool ForceResort)
 		Packet.m_Flags = NETSENDFLAG_CONNLESS;
 		Packet.m_DataSize = sizeof(SERVERBROWSE_GETLIST);
 		Packet.m_pData = SERVERBROWSE_GETLIST;
-
+		
+		//use account server
+		//TODO use more of them
+		{
+			net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+			Packet.m_Address = Addr;
+			m_pNetClient->Send(&Packet);	
+		}
+		
+		/*
 		for(i = 0; i < IMasterServer::MAX_MASTERSERVERS; i++)
 		{
 			if(!m_pMasterServer->IsValid(i))
@@ -584,7 +593,7 @@ void CServerBrowser::Update(bool ForceResort)
 			Addr = m_pMasterServer->GetAddr(i);
 			Packet.m_Address = Addr;
 			m_pNetClient->Send(&Packet);
-		}
+		}*/
 
 		if(g_Config.m_Debug)
 			m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "client_srvbrowse", "requesting server list");
@@ -616,7 +625,7 @@ void CServerBrowser::Update(bool ForceResort)
 		if(!pEntry) // no more entries
 			break;
 
-		// no more then 10 concurrent requests
+		// no more than 10 concurrent requests
 		if(Count == g_Config.m_BrMaxRequests)
 			break;
 

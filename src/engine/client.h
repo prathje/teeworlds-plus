@@ -136,6 +136,9 @@ public:
 	virtual bool SoundInitFailed() = 0;
 
 	virtual int GetDebugFont() = 0;
+	
+	virtual void Login() = 0;
+	virtual int AccountStatus() = 0;
 };
 
 class IGameClient : public IInterface

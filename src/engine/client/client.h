@@ -178,7 +178,9 @@ class CClient : public IClient, public CDemoPlayer::IListner
 	volatile int m_GfxState;
 	static void GraphicsThreadProxy(void *pThis) { ((CClient*)pThis)->GraphicsThread(); }
 	void GraphicsThread();
-
+	
+	//account
+	int m_AccountStatus;
 public:
 	IEngine *Engine() { return m_pEngine; }
 	IEngineGraphics *Graphics() { return m_pGraphics; }
@@ -221,8 +223,10 @@ public:
 	// ------ state handling -----
 	void SetState(int s);
 	
+	
 	//account
 	void Login();
+	int AccountStatus() { return m_AccountStatus;}
 
 	// called when the map is loaded and we should init for a new round
 	void OnEnterGame();

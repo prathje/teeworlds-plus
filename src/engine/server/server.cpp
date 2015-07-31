@@ -337,7 +337,13 @@ void CServer::SetClientName(int ClientID, const char *pName)
 		return;
 
 	char aCleanName[MAX_NAME_LENGTH];
-	str_copy(aCleanName, pName, sizeof(aCleanName));
+	if(g_Config.m_SvUseAccounts) {
+		str_copy(aCleanName, m_aClients[ClientID].m_aAccountName, sizeof(aCleanName));
+	}
+	else {
+		str_copy(aCleanName, pName, sizeof(aCleanName));
+	}
+	
 
 	// clear name
 	for(char *p = aCleanName; *p; ++p)
@@ -1187,7 +1193,7 @@ void CServer::PumpNetwork()
 				else if(Packet.m_DataSize >= sizeof(ACCOUNTSRV_REQUEST_RESPONSE) &&
 					mem_comp(Packet.m_pData, ACCOUNTSRV_REQUEST_RESPONSE, sizeof(ACCOUNTSRV_REQUEST_RESPONSE)) == 0) {
 					NETADDR acaddr;
-					net_addr_from_str(&acaddr, g_Config.m_AccountserverAdress);
+					net_addr_from_str(&acaddr, g_Config.m_AccountserverAddress);
 					if(net_addr_comp(&acaddr, &Packet.m_Address) == 0) {
 						if(!g_Config.m_SvUseAccounts) {
 							Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "Account", "Received response though accounts are disabled");
@@ -1205,7 +1211,7 @@ void CServer::PumpNetwork()
 						dbg_msg("Account", "%s got a response: %d", pAccountName, response);
 						int ClientID = -1;
 						for(int c = 0; c < MAX_CLIENTS; ++c) {
-							if(m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION && str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
+							if( (m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION || m_aClients[c].m_State == CClient::STATE_INGAME)  && str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
 								ClientID = c;
 								break;
 							}
@@ -1302,7 +1308,7 @@ void CServer::InitRegister(CNetServer *pNetServer, IEngineMasterServer *pMasterS
 void CServer::AccountRequest(int ClientID) {
 
 	NETADDR Addr;
-	net_addr_from_str(&Addr, g_Config.m_AccountserverAdress);
+	net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
 	
 	//prepare packet
 	CPacker packer;
@@ -1401,7 +1407,7 @@ int CServer::Run()
 			{
 				if(m_aClients[c].m_State != CClient::STATE_ACCOUNT_VERIFICATION)
 					continue;
-				if(t > m_aClients[c].m_LastAccountRequestTime + (float)g_Config.m_SvAccountRequestTime * (float) time_freq() * 0.001f) {
+				if(t > m_aClients[c].m_LastAccountRequestTime + (int64) (((float)g_Config.m_SvAccountRequestTime * 0.001f) * (float) time_freq()) ) {
 					
 					if(m_aClients[c].m_NumAccountRequests >= g_Config.m_SvAccountMaxRequests) {
 						m_NetServer.Drop(c, "Your account verification timed out!");		

@@ -1034,12 +1034,14 @@ void CMenus::RenderServerbrowser(CUIRect MainView)
 		}
 
 		// address info
-		StatusBox.VSplitLeft(20.0f, 0, &StatusBox);
-		StatusBox.HSplitTop(20.0f, &Button, &StatusBox);
-		UI()->DoLabelScaled(&Button, Localize("Host address"), 14.0f, -1);
-		StatusBox.HSplitTop(20.0f, &Button, 0);
-		static float Offset = 0.0f;
-		DoEditBox(&g_Config.m_UiServerAddress, &Button, g_Config.m_UiServerAddress, sizeof(g_Config.m_UiServerAddress), 14.0f, &Offset);
+		if(g_Config.m_ClFullOptions) {
+			StatusBox.VSplitLeft(20.0f, 0, &StatusBox);
+			StatusBox.HSplitTop(20.0f, &Button, &StatusBox);
+			UI()->DoLabelScaled(&Button, Localize("Host address"), 14.0f, -1);
+			StatusBox.HSplitTop(20.0f, &Button, 0);
+			static float Offset = 0.0f;
+			DoEditBox(&g_Config.m_UiServerAddress, &Button, g_Config.m_UiServerAddress, sizeof(g_Config.m_UiServerAddress), 14.0f, &Offset);
+		}		
 	}
 }
 
