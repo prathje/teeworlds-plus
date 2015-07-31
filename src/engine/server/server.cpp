@@ -1396,6 +1396,9 @@ int CServer::Run()
 			str_format(aBuf, sizeof(aBuf), "baseline memory usage %dk", mem_stats()->allocated/1024);
 			Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "server", aBuf);
 		}
+		
+		//account	
+		m_CurrentUseAccounts = g_Config.m_SvUseAccounts;
 
 		while(m_RunServer)
 		{
@@ -1417,6 +1420,17 @@ int CServer::Run()
 				}
 			}
 
+			//account
+			if(g_Config.m_SvUseAccounts != m_CurrentUseAccounts)
+			{
+				m_CurrentUseAccounts = g_Config.m_SvUseAccounts;
+				for(int i = 0; i < MAX_CLIENTS; ++i)
+				{
+					if(m_aClients[i].m_State != CClient::STATE_EMPTY)
+						m_NetServer.Drop(i, m_CurrentUseAccounts ? "Server changed into account mode" : "Server left account mode");
+				}
+			}
+			
 			// load new map TODO: don't poll this
 			if(str_comp(g_Config.m_SvMap, m_aCurrentMap) != 0 || m_MapReload)
 			{

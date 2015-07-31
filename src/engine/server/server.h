@@ -158,6 +158,8 @@ public:
 	int64 m_Lastheartbeat;
 	//static NETADDR4 master_server;
 
+	//account
+	bool m_CurrentUseAccounts;
 	char m_aCurrentMap[64];
 	unsigned m_CurrentMapCrc;
 	unsigned char *m_pCurrentMapData;
