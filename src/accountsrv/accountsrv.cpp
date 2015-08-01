@@ -440,19 +440,6 @@ int AccountStatus(const CAccount *pAcc, const CServerEntry *pServer) {
 				dbg_msg("WTF", "asd3");
 				return ACCOUNT_STATUS_ERROR;			
 			}
-			unsigned char aAddrStr[sizeof(NETADDR)+1];
-			mem_copy(aAddrStr, &pAcc->m_ServerAddress, sizeof(NETADDR)); 
-			unsigned char aAddrStr2[sizeof(NETADDR)+1];
-			mem_copy(aAddrStr2, &pServer->m_Address, sizeof(NETADDR));
-				dbg_msg("test", "%d:",sizeof(NETADDR)); 	
-			for(int i = 0; i < 16; ++i)
-			
-				dbg_msg("test", "ip %d: %d %d \n",i, pAcc->m_ServerAddress.ip[i], pServer->m_Address.ip[i]); 	
-			{
-				dbg_msg("test", "port: %d %d \n", pAcc->m_ServerAddress.port, pServer->m_Address.port); 			
-				dbg_msg("test", "type: %d %d \n", pAcc->m_ServerAddress.type, pServer->m_Address.type); 			
-			
-			}
 					
 			if(net_addr_comp(&pAcc->m_ServerAddress, &pServer->m_Address) == 0) {
 				if(pServer->HasRights(pAcc)) {
