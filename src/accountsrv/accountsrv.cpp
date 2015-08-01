@@ -449,7 +449,7 @@ int AccountStatus(const CAccount *pAcc, const CServerEntry *pServer) {
 				return ACCOUNT_STATUS_ERROR;
 			}
 			else {
-				dbg_msg("WTF", "net %s, %s", aAddrStr, aAddrStr2);
+				dbg_msg("WTF", "net");
 			
 			}
 	}
@@ -687,8 +687,10 @@ int main(int argc, const char **argv) // ignore_convention
 					unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
 					//we dont need the header
 					unpacker.GetRaw(sizeof(ACCOUNTSRV_LOGIN));
-					NETADDR address;					
-					UnpackNetAddress(&unpacker, &address);
+					NETADDR address;
+					mem_zero(&address, sizeof(NETADDR));
+					UnpackNetAddress(&unpacker, &address);				
+					
 					const char *pName = unpacker.GetString(CUnpacker::SANITIZE_CC);
 					const char *pPassword = unpacker.GetString(CUnpacker::SANITIZE_CC);
 									

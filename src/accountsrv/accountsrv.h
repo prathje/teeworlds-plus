@@ -40,7 +40,9 @@ inline void UnpackNetAddress(CUnpacker *pUnpacker, NETADDR *pAddress) {
 		pAddress->ip[i+2] = (unsigned char)((combined >> 8)&0xFF);
 		pAddress->ip[i+3] = (unsigned char)(combined&0xFF);		
 	}
-	pAddress->port = pUnpacker->GetInt();
+	int port = pUnpacker->GetInt();
+	dbg_msg("packer", "unpacked %d", port);
+	pAddress->port = port;
 	pAddress->type = pUnpacker->GetInt();	
 }
 
@@ -49,6 +51,8 @@ inline void PackNetAddress(CPacker *pPacker, const NETADDR *pAddress) {
 		int combined = (pAddress->ip[i] << 24) | (pAddress->ip[i+1] << 16) | (pAddress->ip[i+2] << 8) | (pAddress->ip[i+3]);
 		pPacker->AddInt(combined);
 	}
+	int port = pAddress->port;
+	dbg_msg("packer", "packed %d", port);
 	pPacker->AddInt(pAddress->port);
 	pPacker->AddInt(pAddress->type);
 }
