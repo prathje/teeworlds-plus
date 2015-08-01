@@ -5,12 +5,14 @@
 
 #include <engine/shared/packer.h>
 #include <base/system.h>
-
+#include <string.h>
+#include <base/tl/array.h>
 enum {
 	ACCOUNT_STATUS_OK = 0,
 	ACCOUNT_STATUS_ERROR,
 	ACCOUNT_STATUS_BANNED,
 	ACCOUNT_STATUS_UNKNOWN,
+	ACCOUNT_STATUS_NEED_ROLE,
 	MAX_ACCOUNT_PASSWORD_LENGTH = 64,
 	MAX_ACCOUNT_NAME_LENGTH = 64,
 };
@@ -51,4 +53,14 @@ inline void PackNetAddress(CPacker *pPacker, const NETADDR *pAddress) {
 	pPacker->AddInt(pAddress->type);
 }
 
+inline void strtok_array(char * str, const char * delimiters, array<const char*> &arr) {
+	char * pch;
+	pch = strtok (str, delimiters);
+	while (pch != NULL)
+	{
+		dbg_msg("test", "part: %s ", pch);
+		arr.add(pch);
+		pch = strtok (NULL, delimiters);
+	}
+}
 #endif
