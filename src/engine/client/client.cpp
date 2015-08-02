@@ -360,10 +360,9 @@ void CClient::SendInfo()
 		
 	//TODO Check if serveraddress is a registered server from the accountserver server list
 	//use account name here?
-	if(g_Config.m_AutoLogin) {
-		Login();
-		Msg.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
-	}
+	
+	Login();
+	Msg.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
 	
 	SendMsgEx(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 }

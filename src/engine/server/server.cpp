@@ -1266,6 +1266,8 @@ void CServer::PumpNetwork()
 						CUnpacker unpacker;
 						unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
 						unpacker.GetRaw(sizeof(ACCOUNTSRV_REQUEST_RESPONSE));
+						NETADDR clientAddr;
+						UnpackNetAddress(&unpacker, &clientAddr);
 						const char* pAccountName = unpacker.GetString(CUnpacker::SANITIZE_CC);
 						int response = unpacker.GetInt();
 						if(str_length(pAccountName) == 0 || str_length(pAccountName) >= MAX_ACCOUNT_NAME_LENGTH) {
@@ -1275,6 +1277,20 @@ void CServer::PumpNetwork()
 						dbg_msg("Account", "%s got a response: %d", pAccountName, response);
 						int ClientID = -1;
 						for(int c = 0; c < MAX_CLIENTS; ++c) {
+							if(str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
+								if(m_aClients[c].m_State == CClient::STATE_INGAME) {
+									//kick this player (logged in from another location)							
+									m_NetServer.Drop(c, str_length(m_aClients[c].m_aAccountName) > 0 ? "You logged in from another location" : "A player with the same name logged in");
+								} else if(m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION) {								
+									if(net_addr_comp(&clientAddr, m_NetServer.ClientAddr(c)) == 0) {
+										if(ClientID == -1) {
+											ClientID = c;
+										} else {
+											m_NetServer.Drop(c, "You logged in from another location");							
+										}										
+									}								
+								}							
+							}
 							if( (m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION || m_aClients[c].m_State == CClient::STATE_INGAME)  && str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
 								ClientID = c;
 								break;

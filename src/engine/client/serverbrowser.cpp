@@ -13,6 +13,7 @@
 #include <engine/config.h>
 #include <engine/console.h>
 #include <engine/friends.h>
+#include <engine/client.h>
 #include <engine/masterserver.h>
 
 #include <mastersrv/mastersrv.h>
@@ -69,6 +70,7 @@ void CServerBrowser::SetBaseInfo(class CNetClient *pClient, const char *pNetVers
 	m_pMasterServer = Kernel()->RequestInterface<IMasterServer>();
 	m_pConsole = Kernel()->RequestInterface<IConsole>();
 	m_pFriends = Kernel()->RequestInterface<IFriends>();
+	m_pClient = Kernel()->RequestInterface<IClient>();
 	IConfig *pConfig = Kernel()->RequestInterface<IConfig>();
 	if(pConfig)
 		pConfig->RegisterCallback(ConfigSaveCallback, this);
@@ -488,7 +490,7 @@ void CServerBrowser::Refresh(int Type)
 
 	//
 	m_ServerlistType = Type;
-
+	m_pClient->Login();
 	if(Type == IServerBrowser::TYPE_LAN)
 	{
 		unsigned char Buffer[sizeof(SERVERBROWSE_GETINFO)+1];
