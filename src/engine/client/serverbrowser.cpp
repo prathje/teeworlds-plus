@@ -336,6 +336,11 @@ CServerBrowser::CServerEntry *CServerBrowser::Find(const NETADDR &Addr)
 	return (CServerEntry*)0;
 }
 
+const char *CServerBrowser::GetServerName(const NETADDR &Addr) {
+	CServerBrowser::CServerEntry *pEntry = Find(Addr);
+	return ((pEntry && pEntry->m_GotInfo) ? pEntry->m_Info.m_aName : "unknown");
+}
+
 void CServerBrowser::QueueRequest(CServerEntry *pEntry)
 {
 	// add it to the list of servers that we should request info from

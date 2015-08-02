@@ -866,14 +866,26 @@ int CMenus::Render()
 		}
 		else if(m_Popup == POPUP_CONNECTING)
 		{
-			pTitle = Localize("Connecting to");
-			pExtraText = g_Config.m_UiServerAddress; // TODO: query the client about the address
-			pButtonText = Localize("Abort");
+			
+			
+			pButtonText = Localize("Abort");			
+			pExtraText = "";
 			if(Client()->MapDownloadTotalsize() > 0)
 			{
 				pTitle = Localize("Downloading map");
-				pExtraText = "";
+				
+			} else {
+				pTitle = Localize("Connecting to");
+				
+				NETADDR Addr;				
+				int res = net_addr_from_str(&Addr, g_Config.m_UiServerAddress);
+				
+				if(res == 0) {					
+					pExtraText = ServerBrowser()->GetServerName(Addr);
+				}
+								
 			}
+			
 		}
 		else if(m_Popup == POPUP_DISCONNECTED)
 		{

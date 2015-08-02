@@ -358,6 +358,7 @@ void AddServer(NETADDR *pInfo, array<const char*> *plRoleNames = 0)
 			CRole *role = GetRole((*plRoleNames)[i]);
 			if(role) {
 				server.m_lRequiredRoles.add(role);
+				dbg_msg("accountsrv", "server roles: %s added %s", aAddrStr, (*plRoleNames)[i]);
 			} else {
 				dbg_msg("accountsrv", "server roles: %s tried to use a non existent role %s", aAddrStr, (*plRoleNames)[i]);
 			}
@@ -414,6 +415,7 @@ void AddAccount(const char *pName, const char *pPassword, bool banned = false, a
 			CRole *includedRole = GetRole((*plRoleNames)[i]);
 			if(includedRole) {
 				acc->m_Role.AddIncludingRole(includedRole);
+				dbg_msg("accountsrv", "acc roles: %s added role %s", pName, (*plRoleNames)[i]);
 			} else {
 				dbg_msg("accountsrv", "acc roles: %s tried to use a non existent role %s", pName, (*plRoleNames)[i]);
 			}
@@ -535,8 +537,8 @@ void Con_AddServer(IConsole::IResult *pResult, void *pUserData){
 		net_addr_from_str(&addr, pStringAddress);
 		array<const char*> lRoleNames;
 		char * pTemp = 0;
-		if(pResult->NumArguments() >= 3) {
-			const char *pString = pResult->GetString(2);
+		if(pResult->NumArguments() >= 2) {
+			const char *pString = pResult->GetString(1);
 			pTemp = new char[str_length(pString) +1];
 			str_copy(pTemp, pString, str_length(pString) +1);
 			strtok_array(pTemp, " ", lRoleNames);			

@@ -96,6 +96,9 @@ public:
 	virtual bool IsFavorite(const NETADDR &Addr) const = 0;
 	virtual void AddFavorite(const NETADDR &Addr) = 0;
 	virtual void RemoveFavorite(const NETADDR &Addr) = 0;
+	
+	//accounts
+	virtual const char *GetServerName(const NETADDR &Addr) = 0;
 };
 
 #endif
