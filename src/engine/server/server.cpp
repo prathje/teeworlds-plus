@@ -1202,10 +1202,10 @@ void CServer::PumpNetwork()
 						CUnpacker unpacker;
 						unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
 						unpacker.GetRaw(sizeof(ACCOUNTSRV_REQUEST_RESPONSE));
-						NETADDR clientAddr;
-						UnpackNetAddress(&unpacker, &clientAddr);
+						NETADDR clientAddr;						
 						const char* pAccountName = unpacker.GetString(CUnpacker::SANITIZE_CC);
 						int response = unpacker.GetInt();
+						UnpackNetAddress(&unpacker, &clientAddr);
 						if(str_length(pAccountName) == 0 || str_length(pAccountName) >= MAX_ACCOUNT_NAME_LENGTH) {
 							Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "Account", "Received bad response message from account server");
 							continue;
@@ -1223,13 +1223,9 @@ void CServer::PumpNetwork()
 											ClientID = c;
 										} else {
 											m_NetServer.Drop(c, "You logged in from another location");							
-										}										
+										}							
 									}								
 								}							
-							}
-							if( (m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION || m_aClients[c].m_State == CClient::STATE_INGAME)  && str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
-								ClientID = c;
-								break;
 							}
 						}
 						if(ClientID != -1) {

@@ -750,8 +750,8 @@ int main(int argc, const char **argv) // ignore_convention
 						dbg_msg("accountsrv", "bad account request from: %s with name %s", aAddrStr, pName);
 						continue;
 					}
-					
-					int response = AccountStatus(GetAccount(pName), server);
+					CAccount *pAcc = GetAccount(pName);
+					int response = AccountStatus(pAcc, server);
 					dbg_msg("accountsrv", "request response: server: %s, name %s, response %d", aAddrStr, pName, response);
 
 					CPacker packer;
@@ -759,6 +759,8 @@ int main(int argc, const char **argv) // ignore_convention
 					packer.AddRaw(ACCOUNTSRV_REQUEST_RESPONSE, sizeof(ACCOUNTSRV_REQUEST_RESPONSE));
 					packer.AddString(pName, MAX_ACCOUNT_NAME_LENGTH);
 					packer.AddInt(response);
+					if(pAcc)
+						PackNetAddress(&packer, &pAcc->m_Address);
 					
 					CNetChunk p;
 					p.m_ClientID = -1;
