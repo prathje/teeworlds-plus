@@ -281,6 +281,9 @@ void CServer::CClient::Reset()
 	m_LastInputTick = -1;
 	m_SnapRate = CClient::SNAPRATE_INIT;
 	m_Score = 0;
+	m_LastAccountRequestTime = 0;
+	m_NumAccountRequests = 0;
+	mem_zero(&m_aAccountName[0], sizeof(MAX_ACCOUNT_NAME_LENGTH));
 }
 
 CServer::CServer() : m_DemoRecorder(&m_SnapshotDelta)
@@ -397,7 +400,13 @@ void CServer::SetClientName(int ClientID, const char *pName)
 		return;
 
 	char aCleanName[MAX_NAME_LENGTH];
-	str_copy(aCleanName, pName, sizeof(aCleanName));
+	if(g_Config.m_SvUseAccounts) {
+		str_copy(aCleanName, m_aClients[ClientID].m_aAccountName, sizeof(aCleanName));
+	}
+	else {
+		str_copy(aCleanName, pName, sizeof(aCleanName));
+	}
+	
 
 	// clear name
 	if(g_Config.m_SvCleanName) {
@@ -898,9 +907,23 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					m_NetServer.Drop(ClientID, "Wrong password");
 					return;
 				}
-
-				m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
-				SendMap(ClientID);
+				
+				if(g_Config.m_SvUseAccounts) {
+					const char *pAccountName = Unpacker.GetString(CUnpacker::SANITIZE_CC);
+					if(str_length(pAccountName) == 0 || Unpacker.Error()) {
+						m_NetServer.Drop(ClientID, "You need an Account client with enabled auto login in order to join this server!");
+						return;
+					}
+					
+					m_aClients[ClientID].m_State = CClient::STATE_ACCOUNT_VERIFICATION;
+					str_copy(m_aClients[ClientID].m_aAccountName, pAccountName, MAX_ACCOUNT_NAME_LENGTH);
+				}
+				else {
+					//skip account step
+					m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
+					m_aClients[ClientID].m_aAccountName[0] = 0;
+					SendMap(ClientID);
+				}
 			}
 		}
 		else if(Msg == NETMSG_REQUEST_MAP_DATA)
@@ -1231,6 +1254,46 @@ void CServer::PumpNetwork()
 				{
 					SendServerInfo(&Packet.m_Address, ((unsigned char *)Packet.m_pData)[sizeof(SERVERBROWSE_GETINFO)]);
 				}
+				else if(Packet.m_DataSize >= sizeof(ACCOUNTSRV_REQUEST_RESPONSE) &&
+					mem_comp(Packet.m_pData, ACCOUNTSRV_REQUEST_RESPONSE, sizeof(ACCOUNTSRV_REQUEST_RESPONSE)) == 0) {
+					NETADDR acaddr;
+					net_addr_from_str(&acaddr, g_Config.m_AccountserverAddress);
+					if(net_addr_comp(&acaddr, &Packet.m_Address) == 0) {
+						if(!g_Config.m_SvUseAccounts) {
+							Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "Account", "Received response though accounts are disabled");
+							continue;
+						}
+						CUnpacker unpacker;
+						unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
+						unpacker.GetRaw(sizeof(ACCOUNTSRV_REQUEST_RESPONSE));
+						const char* pAccountName = unpacker.GetString(CUnpacker::SANITIZE_CC);
+						int response = unpacker.GetInt();
+						if(str_length(pAccountName) == 0 || str_length(pAccountName) >= MAX_ACCOUNT_NAME_LENGTH) {
+							Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "Account", "Received bad response message from account server");
+							continue;
+						}
+						dbg_msg("Account", "%s got a response: %d", pAccountName, response);
+						int ClientID = -1;
+						for(int c = 0; c < MAX_CLIENTS; ++c) {
+							if( (m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION || m_aClients[c].m_State == CClient::STATE_INGAME)  && str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
+								ClientID = c;
+								break;
+							}
+						}
+						if(ClientID != -1) {
+							if(response == ACCOUNT_STATUS_OK) {
+								m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
+								SendMap(ClientID);
+							} else {
+								m_NetServer.Drop(ClientID, "Your account could not be verified");				
+							}
+						} else {
+							dbg_msg("Account", "player with accountname %s could not be found", pAccountName);
+						}
+					} else {
+						Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "Account", "Received a response message from unknown source!");
+					}
+				}
 			}
 		}
 		else
@@ -1306,6 +1369,36 @@ void CServer::InitRegister(CNetServer *pNetServer, IEngineMasterServer *pMasterS
 	m_Register.Init(pNetServer, pMasterServer, pConsole);
 }
 
+void CServer::AccountRequest(int ClientID) {
+
+	NETADDR Addr;
+	net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+	
+	//prepare packet
+	CPacker packer;
+	packer.Reset();
+	packer.AddRaw(ACCOUNTSRV_REQUEST, sizeof(ACCOUNTSRV_REQUEST));
+	
+	PackNetAddress(&packer, m_NetServer.ClientAddr(ClientID));
+	packer.AddString(m_aClients[ClientID].m_aAccountName, MAX_ACCOUNT_NAME_LENGTH);
+
+	CNetChunk Packet;
+	mem_zero(&Packet, sizeof(Packet));
+	Packet.m_ClientID = -1;
+	Packet.m_Flags = NETSENDFLAG_CONNLESS;
+	Packet.m_pData = packer.Data();
+	Packet.m_Address = Addr;
+	
+	Packet.m_DataSize = packer.Size();
+	
+	char aAddrStr[NETADDR_MAXSTRSIZE];
+	net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
+	dbg_msg("Account", "Request: %s %d", aAddrStr, Packet.m_DataSize);
+	
+	m_aClients[ClientID].m_NumAccountRequests++;
+	m_aClients[ClientID].m_LastAccountRequestTime = time_get();
+	m_NetServer.Send(&Packet);
+}
 int CServer::Run()
 {
 	//
@@ -1367,12 +1460,41 @@ int CServer::Run()
 			str_format(aBuf, sizeof(aBuf), "baseline memory usage %dk", mem_stats()->allocated/1024);
 			Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "server", aBuf);
 		}
+		
+		//account	
+		m_CurrentUseAccounts = g_Config.m_SvUseAccounts;
 
 		while(m_RunServer)
 		{
 			int64 t = time_get();
 			int NewTicks = 0;
+			
+			//check accounts
+			for(int c = 0; c < MAX_CLIENTS; c++)
+			{
+				if(m_aClients[c].m_State != CClient::STATE_ACCOUNT_VERIFICATION)
+					continue;
+				if(t > m_aClients[c].m_LastAccountRequestTime + (int64) (((float)g_Config.m_SvAccountRequestTime * 0.001f) * (float) time_freq()) ) {
+					
+					if(m_aClients[c].m_NumAccountRequests >= g_Config.m_SvAccountMaxRequests) {
+						m_NetServer.Drop(c, "Your account verification timed out!");		
+					} else {
+						AccountRequest(c);
+					}
+				}
+			}
 
+			//account
+			if(g_Config.m_SvUseAccounts != m_CurrentUseAccounts)
+			{
+				m_CurrentUseAccounts = g_Config.m_SvUseAccounts;
+				for(int i = 0; i < MAX_CLIENTS; ++i)
+				{
+					if(m_aClients[i].m_State != CClient::STATE_EMPTY)
+						m_NetServer.Drop(i, m_CurrentUseAccounts ? "Server changed into account mode" : "Server left account mode");
+				}
+			}
+			
 			// load new map TODO: don't poll this
 			if(str_comp(g_Config.m_SvMap, m_aCurrentMap) != 0 || m_MapReload)
 			{

@@ -38,6 +38,7 @@
 #include <game/version.h>
 
 #include <mastersrv/mastersrv.h>
+#include <accountsrv/accountsrv.h>
 #include <versionsrv/versionsrv.h>
 
 #include "friends.h"
@@ -303,6 +304,8 @@ CClient::CClient() : m_DemoPlayer(&m_SnapshotDelta), m_DemoRecorder(&m_SnapshotD
 	m_RecivedSnapshots = 0;
 
 	m_VersionInfo.m_State = CVersionInfo::STATE_INIT;
+	
+	m_AccountStatus = ACCOUNT_STATUS_UNKNOWN;
 }
 
 // ----- send functions -----
@@ -350,9 +353,18 @@ int CClient::SendMsgEx(CMsgPacker *pMsg, int Flags, bool System)
 
 void CClient::SendInfo()
 {
+	
 	CMsgPacker Msg(NETMSG_INFO);
 	Msg.AddString(GameClient()->NetVersion(), 128);
 	Msg.AddString(g_Config.m_Password, 128);
+		
+	//TODO Check if serveraddress is a registered server from the accountserver server list
+	//use account name here?
+	if(g_Config.m_AutoLogin) {
+		Login();
+		Msg.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
+	}
+	
 	SendMsgEx(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 }
 
@@ -441,6 +453,35 @@ void CClient::SendInput()
 	SendMsgEx(&Msg, MSGFLAG_FLUSH);
 }
 
+//Account Login
+void CClient::Login() {
+
+	NETADDR Addr;
+	net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+	
+	//prepare packet
+	CPacker packer;
+	packer.Reset();
+	packer.AddRaw(ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN));
+	PackNetAddress(&packer, &m_ServerAddress);
+	packer.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
+	packer.AddString(g_Config.m_AccountPassword, MAX_ACCOUNT_PASSWORD_LENGTH);
+
+	CNetChunk Packet;
+	mem_zero(&Packet, sizeof(Packet));
+	Packet.m_ClientID = -1;
+	Packet.m_Flags = NETSENDFLAG_CONNLESS;
+	Packet.m_pData = packer.Data();
+	Packet.m_Address = Addr;
+	
+	Packet.m_DataSize = packer.Size();
+	
+	char aAddrStr[NETADDR_MAXSTRSIZE];
+	net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
+	dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
+	
+	m_NetClient.Send(&Packet);
+}
 const char *CClient::LatestVersion()
 {
 	return m_aVersionStr;
@@ -504,7 +545,7 @@ void CClient::EnterGame()
 {
 	if(State() == IClient::STATE_DEMOPLAYBACK)
 		return;
-
+		
 	// now we will wait for two snapshots
 	// to finish the connection
 	SendEnterGame();
@@ -913,6 +954,16 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 	{
 		// check for valid master server address
 		bool Valid = false;
+		
+		//account
+		//TODO: use multiple accountserver addresses
+		NETADDR Addr;
+		net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+		if(net_addr_comp(&pPacket->m_Address, &Addr) == 0)
+		{
+			Valid = true;
+		}
+		/*
 		for(int i = 0; i < IMasterServer::MAX_MASTERSERVERS; ++i)
 		{
 			if(m_pMasterServer->IsValid(i))
@@ -924,7 +975,7 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 					break;
 				}
 			}
-		}
+		}*/
 		if(!Valid)
 			return;
 
@@ -1007,6 +1058,29 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 			else
 				m_ServerBrowser.Set(pPacket->m_Address, IServerBrowser::SET_TOKEN, Token, &Info);
 		}
+	}
+	
+	//account response
+	
+	if(pPacket->m_DataSize == (int)sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1 &&
+		mem_comp(pPacket->m_pData, ACCOUNTSRV_LOGIN_RESPONSE, sizeof(ACCOUNTSRV_LOGIN_RESPONSE)) == 0)
+	{
+		NETADDR acaddr;
+		net_addr_from_str(&acaddr, g_Config.m_AccountserverAddress);
+		if(net_addr_comp(&acaddr, &pPacket->m_Address) == 0) {
+			unsigned char *pData = (unsigned char *)pPacket->m_pData;
+			int response = pData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE)];
+			m_AccountStatus = response;
+			if(response == ACCOUNT_STATUS_OK) {
+				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login successful");
+			} else if(response == ACCOUNT_STATUS_BANNED) {
+				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Your account is currently banned.");
+			} else {
+				m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "account", "Login error.");
+			}		
+		} else {
+			m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "account", "Received a login message from unknown source!");
+		}		
 	}
 }
 
@@ -1868,7 +1942,7 @@ void CClient::Run()
 		if(Input()->KeyPressed(KEY_LCTRL) && Input()->KeyPressed(KEY_LSHIFT) && Input()->KeyDown('g'))
 			g_Config.m_DbgGraphs ^= 1;
 
-		if(Input()->KeyPressed(KEY_LCTRL) && Input()->KeyPressed(KEY_LSHIFT) && Input()->KeyDown('e'))
+		if(g_Config.m_ClFullOptions && Input()->KeyPressed(KEY_LCTRL) && Input()->KeyPressed(KEY_LSHIFT) && Input()->KeyDown('e'))
 		{
 			g_Config.m_ClEditor = g_Config.m_ClEditor^1;
 			Input()->MouseModeRelative();
@@ -2207,12 +2281,18 @@ void CClient::ServerBrowserUpdate()
 	m_ResortServerBrowser = true;
 }
 
+void CClient::Con_Login(IConsole::IResult *pResult, void *pUserData){
+	CClient *pSelf = (CClient *)pUserData;
+	pSelf->Login();
+}
+
 void CClient::ConchainServerBrowserUpdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
 {
 	pfnCallback(pResult, pCallbackUserData);
 	if(pResult->NumArguments())
 		((CClient *)pUserData)->ServerBrowserUpdate();
 }
+
 
 void CClient::RegisterCommands()
 {
@@ -2243,6 +2323,8 @@ void CClient::RegisterCommands()
 	m_pConsole->Register("add_demomarker", "", CFGFLAG_CLIENT, Con_AddDemoMarker, this, "Add demo timeline marker");
 	m_pConsole->Register("add_favorite", "s", CFGFLAG_CLIENT, Con_AddFavorite, this, "Add a server as a favorite");
 	m_pConsole->Register("remove_favorite", "s", CFGFLAG_CLIENT, Con_RemoveFavorite, this, "Remove a server from favorites");
+	
+	m_pConsole->Register("login", "", CFGFLAG_CLIENT, Con_Login, this, "Login using the current name and cl_account_pw data");
 
 	// used for server browser update
 	m_pConsole->Chain("br_filter_string", ConchainServerBrowserUpdate, this);

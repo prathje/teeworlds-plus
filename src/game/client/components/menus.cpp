@@ -540,7 +540,7 @@ int CMenus::RenderMenubar(CUIRect r)
 
 		Box.VSplitLeft(100.0f, &Button, &Box);
 		static int s_InternetButton=0;
-		if(DoButton_MenuTab(&s_InternetButton, Localize("Internet"), m_ActivePage==PAGE_INTERNET, &Button, CUI::CORNER_TL))
+		if(DoButton_MenuTab(&s_InternetButton, Localize("Internet"), m_ActivePage==PAGE_INTERNET, &Button, g_Config.m_ClFullOptions ? CUI::CORNER_TL : CUI::CORNER_T))
 		{
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_INTERNET);
 			NewPage = PAGE_INTERNET;
@@ -549,7 +549,7 @@ int CMenus::RenderMenubar(CUIRect r)
 		//Box.VSplitLeft(4.0f, 0, &Box);
 		Box.VSplitLeft(80.0f, &Button, &Box);
 		static int s_LanButton=0;
-		if(DoButton_MenuTab(&s_LanButton, Localize("LAN"), m_ActivePage==PAGE_LAN, &Button, 0))
+		if(g_Config.m_ClFullOptions && DoButton_MenuTab(&s_LanButton, Localize("LAN"), m_ActivePage==PAGE_LAN, &Button, 0))
 		{
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_LAN);
 			NewPage = PAGE_LAN;
@@ -558,7 +558,7 @@ int CMenus::RenderMenubar(CUIRect r)
 		//box.VSplitLeft(4.0f, 0, &box);
 		Box.VSplitLeft(110.0f, &Button, &Box);
 		static int s_FavoritesButton=0;
-		if(DoButton_MenuTab(&s_FavoritesButton, Localize("Favorites"), m_ActivePage==PAGE_FAVORITES, &Button, CUI::CORNER_TR))
+		if(g_Config.m_ClFullOptions && DoButton_MenuTab(&s_FavoritesButton, Localize("Favorites"), m_ActivePage==PAGE_FAVORITES, &Button, CUI::CORNER_TR))
 		{
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_FAVORITES);
 			NewPage = PAGE_FAVORITES;
@@ -567,7 +567,7 @@ int CMenus::RenderMenubar(CUIRect r)
 		Box.VSplitLeft(4.0f*5, 0, &Box);
 		Box.VSplitLeft(100.0f, &Button, &Box);
 		static int s_DemosButton=0;
-		if(DoButton_MenuTab(&s_DemosButton, Localize("Demos"), m_ActivePage==PAGE_DEMOS, &Button, CUI::CORNER_T))
+		if(g_Config.m_ClFullOptions && DoButton_MenuTab(&s_DemosButton, Localize("Demos"), m_ActivePage==PAGE_DEMOS, &Button, CUI::CORNER_T))
 		{
 			DemolistPopulate();
 			NewPage = PAGE_DEMOS;
@@ -866,14 +866,26 @@ int CMenus::Render()
 		}
 		else if(m_Popup == POPUP_CONNECTING)
 		{
-			pTitle = Localize("Connecting to");
-			pExtraText = g_Config.m_UiServerAddress; // TODO: query the client about the address
-			pButtonText = Localize("Abort");
+			
+			
+			pButtonText = Localize("Abort");			
+			pExtraText = "";
 			if(Client()->MapDownloadTotalsize() > 0)
 			{
 				pTitle = Localize("Downloading map");
-				pExtraText = "";
+				
+			} else {
+				pTitle = Localize("Connecting to");
+				
+				NETADDR Addr;				
+				int res = net_addr_from_str(&Addr, g_Config.m_UiServerAddress);
+				
+				if(res == 0) {					
+					pExtraText = ServerBrowser()->GetServerName(Addr);
+				}
+								
 			}
+			
 		}
 		else if(m_Popup == POPUP_DISCONNECTED)
 		{

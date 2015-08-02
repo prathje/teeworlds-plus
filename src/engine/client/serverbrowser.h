@@ -50,6 +50,9 @@ public:
 	void Request(const NETADDR &Addr) const;
 
 	void SetBaseInfo(class CNetClient *pClient, const char *pNetVersion);
+	
+	//accounts
+	const char * GetServerName(const NETADDR &Addr);
 
 private:
 	CNetClient *m_pNetClient;
@@ -111,7 +114,7 @@ private:
 
 	void SetInfo(CServerEntry *pEntry, const CServerInfo &Info);
 
-	static void ConfigSaveCallback(IConfig *pConfig, void *pUserData);
+	static void ConfigSaveCallback(IConfig *pConfig, void *pUserData);	
 };
 
 #endif

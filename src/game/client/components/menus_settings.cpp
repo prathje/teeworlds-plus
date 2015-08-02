@@ -181,12 +181,13 @@ void CMenus::RenderSettingsGeneral(CUIRect MainView)
 
 void CMenus::RenderSettingsPlayer(CUIRect MainView)
 {
-	CUIRect Button, Label;
+	CUIRect Button, Label, LoginTestButton;
 	MainView.HSplitTop(10.0f, 0, &MainView);
-
+	
+	float leftMargin = 135.0f;
 	// player name
 	MainView.HSplitTop(20.0f, &Button, &MainView);
-	Button.VSplitLeft(80.0f, &Label, &Button);
+	Button.VSplitLeft(leftMargin, &Label, &Button);
 	Button.VSplitLeft(150.0f, &Button, 0);
 	char aBuf[128];
 	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Name"));
@@ -198,14 +199,46 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 	// player clan
 	MainView.HSplitTop(5.0f, 0, &MainView);
 	MainView.HSplitTop(20.0f, &Button, &MainView);
-	Button.VSplitLeft(80.0f, &Label, &Button);
+	Button.VSplitLeft(leftMargin, &Label, &Button);
 	Button.VSplitLeft(150.0f, &Button, 0);
 	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Clan"));
 	UI()->DoLabelScaled(&Label, aBuf, 14.0, -1);
 	static float s_OffsetClan = 0.0f;
 	if(DoEditBox(g_Config.m_PlayerClan, &Button, g_Config.m_PlayerClan, sizeof(g_Config.m_PlayerClan), 14.0f, &s_OffsetClan))
 		m_NeedSendinfo = true;
-
+		
+	//player account password
+	MainView.HSplitTop(5.0f, 0, &MainView);
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	Button.VSplitLeft(leftMargin, &Label, &Button);
+	Button.VSplitLeft(150.0f, &Button, &LoginTestButton);
+	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Account password"));
+	UI()->DoLabelScaled(&Label, aBuf, 14.0, -1);
+	static float s_OffsetPW = 0.0f;
+	static bool s_PWUpdate = false;
+	if(DoEditBox(g_Config.m_AccountPassword, &Button, g_Config.m_AccountPassword, sizeof(g_Config.m_AccountPassword), 14.0f, &s_OffsetPW))
+	{
+		s_PWUpdate = true;
+	}
+	static int s_Button = 0;
+	LoginTestButton.VSplitLeft(30.0f, 0, &LoginTestButton);
+	LoginTestButton.VSplitLeft(60.0f, &LoginTestButton, &Label);
+	const char *pStatusText =
+						(Client()->AccountStatus() == ACCOUNT_STATUS_OK? Localize("OK") :
+						(Client()->AccountStatus() == ACCOUNT_STATUS_UNKNOWN? Localize("Pending") : Localize("Error")));
+	if(DoButton_Menu(&s_Button, Localize("Test"), 0, &LoginTestButton) || m_EnterPressed)
+	{	
+		//if(s_PWUpdate || Client()->AccountStatus() != ACCOUNT_STATUS_OK)
+		//let them test if they want to
+		{
+			Client()->Login();
+			s_PWUpdate = false;		
+		}		
+	}
+	Label.VSplitLeft(30.0f, 0, &Label);
+	str_format(aBuf, sizeof(aBuf), "%s: %s", Localize("Status"), pStatusText);
+	UI()->DoLabelScaled(&Label, aBuf, 14.0, -1);
+	
 	// country flag selector
 	MainView.HSplitTop(20.0f, 0, &MainView);
 	static float s_ScrollValue = 0.0f;

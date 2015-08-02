@@ -16,6 +16,7 @@
 #include <engine/masterserver.h>
 
 #include <mastersrv/mastersrv.h>
+#include <accountsrv/accountsrv.h>
 
 #include "serverbrowser.h"
 
@@ -335,6 +336,11 @@ CServerBrowser::CServerEntry *CServerBrowser::Find(const NETADDR &Addr)
 	return (CServerEntry*)0;
 }
 
+const char *CServerBrowser::GetServerName(const NETADDR &Addr) {
+	CServerBrowser::CServerEntry *pEntry = Find(Addr);
+	return ((pEntry && pEntry->m_GotInfo) ? pEntry->m_Info.m_aName : "unknown");
+}
+
 void CServerBrowser::QueueRequest(CServerEntry *pEntry)
 {
 	// add it to the list of servers that we should request info from
@@ -563,11 +569,10 @@ void CServerBrowser::Update(bool ForceResort)
 
 	// do server list requests
 	if(m_NeedRefresh && !m_pMasterServer->IsRefreshing())
-	{
-		NETADDR Addr;
+	{	
 		CNetChunk Packet;
+		NETADDR Addr;
 		int i;
-
 		m_NeedRefresh = 0;
 
 		mem_zero(&Packet, sizeof(Packet));
@@ -575,7 +580,16 @@ void CServerBrowser::Update(bool ForceResort)
 		Packet.m_Flags = NETSENDFLAG_CONNLESS;
 		Packet.m_DataSize = sizeof(SERVERBROWSE_GETLIST);
 		Packet.m_pData = SERVERBROWSE_GETLIST;
-
+		
+		//use account server
+		//TODO use more of them
+		{
+			net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+			Packet.m_Address = Addr;
+			m_pNetClient->Send(&Packet);	
+		}
+		
+		/*
 		for(i = 0; i < IMasterServer::MAX_MASTERSERVERS; i++)
 		{
 			if(!m_pMasterServer->IsValid(i))
@@ -584,7 +598,7 @@ void CServerBrowser::Update(bool ForceResort)
 			Addr = m_pMasterServer->GetAddr(i);
 			Packet.m_Address = Addr;
 			m_pNetClient->Send(&Packet);
-		}
+		}*/
 
 		if(g_Config.m_Debug)
 			m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "client_srvbrowse", "requesting server list");
@@ -616,7 +630,7 @@ void CServerBrowser::Update(bool ForceResort)
 		if(!pEntry) // no more entries
 			break;
 
-		// no more then 10 concurrent requests
+		// no more than 10 concurrent requests
 		if(Count == g_Config.m_BrMaxRequests)
 			break;
 
