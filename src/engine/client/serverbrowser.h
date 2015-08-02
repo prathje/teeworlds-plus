@@ -59,6 +59,7 @@ private:
 	IMasterServer *m_pMasterServer;
 	class IConsole *m_pConsole;
 	class IFriends *m_pFriends;
+	class IClient *m_pClient;
 	char m_aNetVersion[128];
 
 	CHeap m_ServerlistHeap;
