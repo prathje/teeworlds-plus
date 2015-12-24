@@ -67,6 +67,8 @@ protected:
 	bool m_MarkedForDestroy;
 	int m_ID;
 	int m_ObjType;
+	//we need to change this if we modify MAX_CLIENTS
+	int16_t m_AffectedCharacters;
 public:
 	CEntity(CGameWorld *pGameWorld, int Objtype);
 	virtual ~CEntity();
@@ -154,6 +156,10 @@ public:
 			Contains the current posititon of the entity.
 	*/
 	vec2 m_Pos;
+
+	bool IsAffected(int ClientID);
+	void SetAffected(int ClientID, bool Affected = true);
+	void InitAffectedCharacters(int Owner);
 };
 
 #endif

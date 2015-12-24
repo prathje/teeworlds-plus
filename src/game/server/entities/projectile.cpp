@@ -20,6 +20,7 @@ CProjectile::CProjectile(CGameWorld *pGameWorld, int Type, int Owner, vec2 Pos, 
 	m_StartTick = Server()->Tick();
 	m_Explosive = Explosive;
 
+	InitAffectedCharacters(m_Owner);
 	GameWorld()->InsertEntity(this);
 }
 
@@ -73,9 +74,9 @@ void CProjectile::Tick()
 			GameServer()->CreateSound(CurPos, m_SoundImpact);
 
 		if(m_Explosive)
-			GameServer()->CreateExplosion(CurPos, m_Owner, m_Weapon, false);
+			GameServer()->CreateExplosion(CurPos, m_Owner, m_Weapon, false, this);
 
-		else if(TargetChr)
+		else if(TargetChr && IsAffected(TargetChr->GetPlayer()->GetCID()))
 			TargetChr->TakeDamage(m_Direction * max(0.001f, m_Force), m_Damage, m_Owner, m_Weapon);
 
 		GameServer()->m_World.DestroyEntity(this);

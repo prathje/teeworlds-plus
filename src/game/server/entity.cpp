@@ -21,6 +21,8 @@ CEntity::CEntity(CGameWorld *pGameWorld, int ObjType)
 
 	m_pPrevTypeEntity = 0;
 	m_pNextTypeEntity = 0;
+
+	m_AffectedCharacters = 0;
 }
 
 CEntity::~CEntity()
@@ -38,6 +40,9 @@ int CEntity::NetworkClipped(int SnappingClient, vec2 CheckPos)
 {
 	if(SnappingClient == -1)
 		return 0;
+	else if(GameServer()->m_apPlayers[SnappingClient]->GetTeam() == TEAM_SPECTATORS && Server()->IsAuthed(SnappingClient) >= g_Config.m_SvSpectatorFullViewAuthLevel) {
+		return 0;
+	}
 
 	float dx = GameServer()->m_apPlayers[SnappingClient]->m_ViewPos.x-CheckPos.x;
 	float dy = GameServer()->m_apPlayers[SnappingClient]->m_ViewPos.y-CheckPos.y;
@@ -65,4 +70,46 @@ bool CEntity::GameLayerClipped(vec2 CheckPos)
 {
 	return round_to_int(CheckPos.x)/32 < -200 || round_to_int(CheckPos.x)/32 > GameServer()->Collision()->GetWidth()+200 ||
 			round_to_int(CheckPos.y)/32 < -200 || round_to_int(CheckPos.y)/32 > GameServer()->Collision()->GetHeight()+200 ? true : false;
+}
+
+bool CEntity::IsAffected(int ClientID) {
+	if (!g_Config.m_SvSprayprotection) {
+		return true;
+	}
+	if (ClientID < 0 || ClientID >= sizeof(m_AffectedCharacters)) {
+		dbg_msg("MAX_CLIENTS Error", "You have to update m_AffectedCharacters to your MAX_CLIENTS size");
+		return true;
+	} else {
+		return (m_AffectedCharacters>>ClientID)&0x1;
+	}
+}
+
+void CEntity::SetAffected(int ClientID, bool Affected) {
+	if (ClientID >= 0 && ClientID < sizeof(m_AffectedCharacters)) {
+		if (Affected) {
+			m_AffectedCharacters |= (1<<ClientID);
+		} else {
+			//clear
+			m_AffectedCharacters &= (1<<ClientID);
+		}
+	}
+}
+
+//TODO Move this to the used cases in laser and projectile
+void CEntity::InitAffectedCharacters(int Owner) {
+	m_AffectedCharacters = 0;
+
+	if (Owner >= 0 && Owner <= MAX_CLIENTS) {
+		for(int i = 0; i < MAX_CLIENTS; ++i) {
+			if (GameServer()->m_apPlayers[i]) {
+				CPlayer *pPlayer = GameServer()->m_apPlayers[i];
+				if (pPlayer->GetTeam() != TEAM_SPECTATORS &&
+					pPlayer->GetCharacter() &&
+					pPlayer->GetCharacter()->IsAlive() &&
+					!NetworkClipped(Owner, pPlayer->GetCharacter()->m_Pos)) {
+					SetAffected(i);
+				}
+			}
+		}
+	}	
 }
