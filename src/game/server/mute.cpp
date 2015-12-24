@@ -123,12 +123,14 @@ void CMute::Unmute(CMuteEntry *pMute)
 	char aAddrStr[NETADDR_MAXSTRSIZE] = { 0 }, aBuf[128];
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		Server()->GetClientAddr(i, aAddrStr, sizeof(aAddrStr));
-		if(str_comp(aAddrStr, pMute->m_aIP) == 0)
-		{
-			str_format(aBuf, sizeof(aBuf), "%s has been unmuted.", Server()->ClientName(i));
-			GameServer()->SendChatTarget(-1, aBuf);
-			break;
+		if(GameServer()->IsClientReady(i)) {
+			Server()->GetClientAddr(i, aAddrStr, sizeof(aAddrStr));
+			if(str_comp(aAddrStr, pMute->m_aIP) == 0)
+			{
+				str_format(aBuf, sizeof(aBuf), "%s has been unmuted.", Server()->ClientName(i));
+				GameServer()->SendChatTarget(-1, aBuf);
+				break;
+			}
 		}
 	}
 	str_format(aBuf, sizeof(aBuf), "unmuted %s", pMute->m_aIP);
