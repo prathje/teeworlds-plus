@@ -485,10 +485,18 @@ void CGameContext::OnTick()
 						No++;
 				}
 
-				if(Yes >= Total/2+1)
-					m_VoteEnforce = VOTE_ENFORCE_YES;
-				else if(No >= (Total+1)/2)
-					m_VoteEnforce = VOTE_ENFORCE_NO;
+				if (!g_Config.m_SvTournamentMode) {
+					if(Yes >= Total/2+1)
+						m_VoteEnforce = VOTE_ENFORCE_YES;
+					else if(No >= (Total+1)/2)
+						m_VoteEnforce = VOTE_ENFORCE_NO;
+				} else {
+					if (Yes == Total) {
+						m_VoteEnforce = VOTE_ENFORCE_YES;
+					} else if(No >= 1) {
+						m_VoteEnforce = VOTE_ENFORCE_NO;
+					}
+				}
 			}
 
 			if(m_VoteEnforce == VOTE_ENFORCE_YES)
@@ -757,7 +765,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 			int64 Now = Server()->Tick();
 			pPlayer->m_LastVoteTry = Now;
-			if(pPlayer->GetTeam() == TEAM_SPECTATORS)
+			if(pPlayer->GetTeam() == TEAM_SPECTATORS && m_pServer->IsAuthed(ClientID) < g_Config.m_SvSpectatorVotesAuthLevel)
 			{
 				SendChatTarget(ClientID, "Spectators aren't allowed to start a vote.");
 				return;
@@ -770,7 +778,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			}
 
 			int Timeleft = pPlayer->m_LastVoteCall + Server()->TickSpeed()*60 - Now;
-			if(pPlayer->m_LastVoteCall && Timeleft > 0)
+			if(pPlayer->m_LastVoteCall && Timeleft > 0 && !m_pServer->IsAuthed(ClientID))
 			{
 				char aChatmsg[512] = {0};
 				str_format(aChatmsg, sizeof(aChatmsg), "You must wait %d seconds before making another vote", (Timeleft/Server()->TickSpeed())+1);
