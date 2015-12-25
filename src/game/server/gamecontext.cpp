@@ -1731,7 +1731,8 @@ void CGameContext::ConStop(IConsole::IResult *pResult, void *pUserData)
 void CGameContext::ConGo(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->m_pController->m_FakeWarmup = (pResult->NumArguments() == 1) ? pSelf->Server()->TickSpeed() * pResult->GetInteger(1) : pSelf->Server()->TickSpeed() * g_Config.m_SvGoTime;
+	int ticks = (pResult->NumArguments() == 1) ? pSelf->Server()->TickSpeed() * pResult->GetInteger(1) : pSelf->Server()->TickSpeed() * g_Config.m_SvGoTime;
+	pSelf->m_pController->m_FakeWarmup = ticks;
 }
 
 void CGameContext::ConSetName(IConsole::IResult *pResult, void *pUserData)

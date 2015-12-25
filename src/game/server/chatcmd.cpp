@@ -102,7 +102,40 @@ bool CGameContext::ShowCommand(int ClientID, CPlayer* pPlayer, const char* pMess
 			{
 				if(g_Config.m_SvStopGoFeature)
 				{
-					m_pController->m_FakeWarmup = Server()->TickSpeed() * g_Config.m_SvGoTime;
+					if(g_Config.m_SvStopGoFeature == 2)
+					{
+						if(g_Config.m_SvSpamprotection && pPlayer->m_LastVoteTry && pPlayer->m_LastVoteTry+Server()->TickSpeed()*3 > Server()->Tick())
+							return false;
+
+						int64 Now = Server()->Tick();
+						pPlayer->m_LastVoteTry = Now;
+
+						if(m_VoteCloseTime)
+						{
+							SendChatTarget(ClientID, "Wait for current vote to end before calling a new one.");
+							return false;
+						}
+
+						int Timeleft = pPlayer->m_LastVoteCall + Server()->TickSpeed()*30 - Now;
+						if(pPlayer->m_LastVoteCall && Timeleft > 0 && !m_pServer->IsAuthed(ClientID))
+						{
+							char aChatmsg[512] = {0};
+							str_format(aChatmsg, sizeof(aChatmsg), "You must wait %d seconds before making another vote", (Timeleft/Server()->TickSpeed())+1);
+							SendChatTarget(ClientID, aChatmsg);
+							return false;
+						}
+
+						char aChatmsg[512] = {0};
+						str_format(aChatmsg, sizeof(aChatmsg), "'%s' wants to go", Server()->ClientName(ClientID));
+						SendChat(-1, CGameContext::CHAT_ALL, aChatmsg);
+						StartVote("Go?", "go", "Go?");
+						pPlayer->m_Vote = 1;
+						pPlayer->m_VotePos = m_VotePos = 1;
+						m_VoteCreator = ClientID;
+						pPlayer->m_LastVoteCall = Now;
+					} else {
+						m_pController->m_FakeWarmup = Server()->TickSpeed() * g_Config.m_SvGoTime;
+					}
 				}
 				else
 					SendChatTarget(ClientID, "This feature is not available at the moment.");
@@ -120,8 +153,43 @@ bool CGameContext::ShowCommand(int ClientID, CPlayer* pPlayer, const char* pMess
 					m_pController->DoWarmup(0);
 					m_pController->m_FakeWarmup = 0;
 				}
-				else
+				else if(g_Config.m_SvStopGoFeature == 2)
+				{
+					if(g_Config.m_SvSpamprotection && pPlayer->m_LastVoteTry && pPlayer->m_LastVoteTry+Server()->TickSpeed()*3 > Server()->Tick())
+						return false;
+
+					int64 Now = Server()->Tick();
+					pPlayer->m_LastVoteTry = Now;
+
+					if(m_VoteCloseTime)
+					{
+						SendChatTarget(ClientID, "Wait for current vote to end before calling a new one.");
+						return false;
+					}
+
+					int Timeleft = pPlayer->m_LastVoteCall + Server()->TickSpeed()*30 - Now;
+					if(pPlayer->m_LastVoteCall && Timeleft > 0 && !m_pServer->IsAuthed(ClientID))
+					{
+						char aChatmsg[512] = {0};
+						str_format(aChatmsg, sizeof(aChatmsg), "You must wait %d seconds before making another vote", (Timeleft/Server()->TickSpeed())+1);
+						SendChatTarget(ClientID, aChatmsg);
+						return false;
+					}
+
+					char aChatmsg[512] = {0};
+					char aCmd[512] = {0};
+					str_format(aChatmsg, sizeof(aChatmsg), "'%s' wants to restart", Server()->ClientName(ClientID));
+					str_format(aCmd, sizeof(aCmd), "restart %d", g_Config.m_SvGoTime);
+
+					SendChat(-1, CGameContext::CHAT_ALL, aChatmsg);
+					StartVote("Restart?", aCmd, "Restart?");
+					pPlayer->m_Vote = 1;
+					pPlayer->m_VotePos = m_VotePos = 1;
+					m_VoteCreator = ClientID;
+					pPlayer->m_LastVoteCall = Now;
+				} else {
 					m_pController->DoWarmup(g_Config.m_SvGoTime);
+				}
 			}
 			else
 				SendChatTarget(ClientID, "This feature is not available at the moment.");
