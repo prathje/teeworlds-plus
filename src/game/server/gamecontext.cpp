@@ -121,7 +121,7 @@ void CGameContext::CreateHammerHit(vec2 Pos)
 }
 
 
-void CGameContext::CreateExplosion(vec2 Pos, int Owner, int Weapon, bool NoDamage)
+void CGameContext::CreateExplosion(vec2 Pos, int Owner, int Weapon, bool NoDamage, CEntity *pCause)
 {
 	// create the event
 	CNetEvent_Explosion *pEvent = (CNetEvent_Explosion *)m_Events.Create(NETEVENTTYPE_EXPLOSION, sizeof(CNetEvent_Explosion));
@@ -147,7 +147,7 @@ void CGameContext::CreateExplosion(vec2 Pos, int Owner, int Weapon, bool NoDamag
 				ForceDir = normalize(Diff);
 			l = 1-clamp((l-InnerRadius)/(Radius-InnerRadius), 0.0f, 1.0f);
 			float Dmg = 6 * l;
-			if((int)Dmg)
+			if((int)Dmg && (!pCause || pCause->IsAffected(apEnts[i]->GetPlayer()->GetCID())))
 				apEnts[i]->TakeDamage(ForceDir*Dmg*2, (int)Dmg, Owner, Weapon);
 		}
 	}
@@ -485,10 +485,18 @@ void CGameContext::OnTick()
 						No++;
 				}
 
-				if(Yes >= Total/2+1)
-					m_VoteEnforce = VOTE_ENFORCE_YES;
-				else if(No >= (Total+1)/2)
-					m_VoteEnforce = VOTE_ENFORCE_NO;
+				if (!g_Config.m_SvTournamentMode) {
+					if(Yes >= Total/2+1)
+						m_VoteEnforce = VOTE_ENFORCE_YES;
+					else if(No >= (Total+1)/2)
+						m_VoteEnforce = VOTE_ENFORCE_NO;
+				} else {
+					if (Yes == Total) {
+						m_VoteEnforce = VOTE_ENFORCE_YES;
+					} else if(No >= 1) {
+						m_VoteEnforce = VOTE_ENFORCE_NO;
+					}
+				}
 			}
 
 			if(m_VoteEnforce == VOTE_ENFORCE_YES)
@@ -757,7 +765,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 			int64 Now = Server()->Tick();
 			pPlayer->m_LastVoteTry = Now;
-			if(pPlayer->GetTeam() == TEAM_SPECTATORS)
+			if(pPlayer->GetTeam() == TEAM_SPECTATORS && m_pServer->IsAuthed(ClientID) < g_Config.m_SvSpectatorVotesAuthLevel)
 			{
 				SendChatTarget(ClientID, "Spectators aren't allowed to start a vote.");
 				return;
@@ -770,7 +778,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			}
 
 			int Timeleft = pPlayer->m_LastVoteCall + Server()->TickSpeed()*60 - Now;
-			if(pPlayer->m_LastVoteCall && Timeleft > 0)
+			if(pPlayer->m_LastVoteCall && Timeleft > 0 && !m_pServer->IsAuthed(ClientID))
 			{
 				char aChatmsg[512] = {0};
 				str_format(aChatmsg, sizeof(aChatmsg), "You must wait %d seconds before making another vote", (Timeleft/Server()->TickSpeed())+1);
@@ -1258,11 +1266,7 @@ void CGameContext::ConTuneDump(IConsole::IResult *pResult, void *pUserData)
 void CGameContext::ConPause(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-
-	if(pSelf->m_pController->IsGameOver())
-		return;
-
-	pSelf->m_World.m_Paused ^= 1;
+	pSelf->m_pController->TogglePause();
 }
 
 void CGameContext::ConChangeMap(IConsole::IResult *pResult, void *pUserData)
@@ -1727,7 +1731,8 @@ void CGameContext::ConStop(IConsole::IResult *pResult, void *pUserData)
 void CGameContext::ConGo(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->m_pController->m_FakeWarmup = (pResult->NumArguments() == 1) ? pSelf->Server()->TickSpeed() * pResult->GetInteger(1) : pSelf->Server()->TickSpeed() * g_Config.m_SvGoTime;
+	int ticks = (pResult->NumArguments() == 1) ? pSelf->Server()->TickSpeed() * pResult->GetInteger(1) : pSelf->Server()->TickSpeed() * g_Config.m_SvGoTime;
+	pSelf->m_pController->m_FakeWarmup = ticks;
 }
 
 void CGameContext::ConSetName(IConsole::IResult *pResult, void *pUserData)

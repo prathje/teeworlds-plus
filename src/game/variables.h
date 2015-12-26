@@ -60,6 +60,7 @@ MACRO_CONFIG_INT(GfxNoclip, gfx_noclip, 0, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "D
 
 // server
 MACRO_CONFIG_INT(SvWarmup, sv_warmup, 0, 0, 0, CFGFLAG_SERVER, "Number of seconds to do warmup before round starts")
+MACRO_CONFIG_INT(SvUnpauseTimer, sv_unpause_timer, 0, 0, 0, CFGFLAG_SERVER, "Number of seconds till the game continues")
 MACRO_CONFIG_STR(SvMotd, sv_motd, 900, "", CFGFLAG_SERVER, "Message of the day to display for the clients")
 MACRO_CONFIG_INT(SvTeamdamage, sv_teamdamage, 0, 0, 1, CFGFLAG_SERVER, "Team damage")
 MACRO_CONFIG_STR(SvMaprotation, sv_maprotation, 768, "", CFGFLAG_SERVER, "Maps to rotate between")
@@ -69,8 +70,11 @@ MACRO_CONFIG_INT(SvPowerups, sv_powerups, 1, 0, 1, CFGFLAG_SERVER, "Allow poweru
 MACRO_CONFIG_INT(SvScorelimit, sv_scorelimit, 20, 0, 1000, CFGFLAG_SERVER, "Score limit (0 disables)")
 MACRO_CONFIG_INT(SvTimelimit, sv_timelimit, 0, 0, 1000, CFGFLAG_SERVER, "Time limit in minutes (0 disables)")
 MACRO_CONFIG_STR(SvGametype, sv_gametype, 32, "dm", CFGFLAG_SERVER, "Game type (dm, tdm, ctf, idm, itdm, ictf, ifreeze, gdm, gtdm, gctf)")
-MACRO_CONFIG_INT(SvTournamentMode, sv_tournament_mode, 0, 0, 1, CFGFLAG_SERVER, "Tournament mode. When enabled, players joins the server as spectator")
+MACRO_CONFIG_INT(SvTournamentMode, sv_tournament_mode, 0, 0, 1, CFGFLAG_SERVER, "Tournament mode. When enabled, players joins the server as spectator, votes need 100%")
+MACRO_CONFIG_INT(SvSpectatorVotesAuthLevel, sv_spec_votes_auth_level, 1, 0, 3, CFGFLAG_SERVER, "Sets a required auth level to start votes as a spectator.")
+MACRO_CONFIG_INT(SvSpectatorFullViewAuthLevel, sv_spec_full_view_auth_level, 1, 0, 3, CFGFLAG_SERVER, "Sets a required auth level to a full map view in spectator.")
 MACRO_CONFIG_INT(SvSpamprotection, sv_spamprotection, 1, 0, 1, CFGFLAG_SERVER, "Spam protection")
+MACRO_CONFIG_INT(SvSprayprotection, sv_sprayprotection, 0, 0, 1, CFGFLAG_SERVER, "Spray protection")
 
 MACRO_CONFIG_INT(SvRespawnDelayTDM, sv_respawn_delay_tdm, 3, 0, 10, CFGFLAG_SERVER, "Time needed to respawn after death in tdm gametype")
 
@@ -115,7 +119,7 @@ MACRO_CONFIG_INT(SvAnticamperRange, sv_anticamper_range, 300, 100, 1000, CFGFLAG
 // General Stuff
 MACRO_CONFIG_INT(SvVoteForceReason, sv_vote_forcereason, 1, 0, 1, CFGFLAG_SERVER, "Allow only votes with a reason (except settings)")
 MACRO_CONFIG_INT(SvGoTime, sv_go_time, 5, 0, 10, CFGFLAG_SERVER, "The restart time for the go-command")
-MACRO_CONFIG_INT(SvStopGoFeature, sv_stopgo_feature, 1, 0, 1, CFGFLAG_SERVER, "Enable stop/go-feature in chat")
+MACRO_CONFIG_INT(SvStopGoFeature, sv_stopgo_feature, 2, 0, 2, CFGFLAG_SERVER, "Enable stop/go-feature in chat. Go starts a vote with value 2")
 MACRO_CONFIG_INT(SvXonxFeature, sv_xonx_feature, 1, 0, 1, CFGFLAG_SERVER, "Enables chat-commands like /1on1 - /6on6 for wars")
 MACRO_CONFIG_INT(SvWarTime, sv_war_time, 15, 0, 600, CFGFLAG_SERVER, "Default warmup-time before a war")
 MACRO_CONFIG_INT(SvLaserjumps, sv_laserjumps, 0, 0, 1, CFGFLAG_SERVER, "Enable laserjumps (only in instagib)")
@@ -162,7 +166,7 @@ MACRO_CONFIG_INT(SvKillingspreeAwardFiredelay, sv_kspree_award_laser_firedelay, 
 MACRO_CONFIG_INT(SvTrainFlag, sv_train_flag, 0, 0, 1000000, CFGFLAG_SERVER, "Turn flag training on > 0 or =0, the value is the distance for the flagcarrier to be killed")
 MACRO_CONFIG_INT(SvHookKill, sv_hook_kill, 0, 0, 1, CFGFLAG_SERVER, "Turn hook kill on or off")
 
-MACRO_CONFIG_INT(SvOwnNetworkClipping, sv_net_clipping, 0, 0, 1, CFGFLAG_SERVER, "use own network clipping values")
+MACRO_CONFIG_INT(SvOwnNetworkClipping, sv_net_clipping, 1, 0, 1, CFGFLAG_SERVER, "use own network clipping values")
 MACRO_CONFIG_INT(SvNetworkClippingX, sv_net_clipping_x, 1000, 0, 10000, CFGFLAG_SERVER, "network clipping value x")
 MACRO_CONFIG_INT(SvNetworkClippingY, sv_net_clipping_y, 800, 0, 10000, CFGFLAG_SERVER, "network clipping value y")
 MACRO_CONFIG_INT(SvNetworkClippingDist, sv_net_clipping_dist, 1100, 0, 10000, CFGFLAG_SERVER, "network clipping value dist")
