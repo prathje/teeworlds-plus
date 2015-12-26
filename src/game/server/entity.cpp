@@ -111,5 +111,5 @@ void CEntity::InitAffectedCharacters(int Owner) {
 				}
 			}
 		}
-	}	
+	}
 }

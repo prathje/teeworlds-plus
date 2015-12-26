@@ -7,6 +7,11 @@
 #include <base/system.h>
 #include <string.h>
 #include <base/tl/array.h>
+
+//key used for basic xor encryption not very good but better than nothing at all
+#define XOR_KEY 124
+
+
 enum {
 	ACCOUNT_STATUS_OK = 0,
 	ACCOUNT_STATUS_ERROR,
@@ -66,5 +71,16 @@ inline void strtok_array(char * str, const char * delimiters, array<const char*>
 		arr.add(pch);
 		pch = strtok (NULL, delimiters);
 	}
+}
+
+inline void EncodeData(char *pStart, unsigned int size) {
+	for(unsigned int i = 0; i < size; ++i) {
+		*(pStart+i) ^= XOR_KEY; 
+	}
+}
+
+inline void DecodeData(char *pStart, unsigned int size) {
+	//basic xor encoding just use the key again
+	EncodeData(pStart, size);
 }
 #endif

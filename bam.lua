@@ -249,9 +249,11 @@ function build(settings)
 
 	client_osxlaunch = {}
 	server_osxlaunch = {}
+	accountserver_osxlaunch = {}
 	if platform == "macosx" then
 		client_osxlaunch = Compile(client_settings, "src/osxlaunch/client.m")
 		server_osxlaunch = Compile(launcher_settings, "src/osxlaunch/server.m")
+		accountserver_osxlaunch = Compile(launcher_settings, "src/osxlaunch/accountserver.m")
 	end
 
 	tools = {}
@@ -269,8 +271,10 @@ function build(settings)
 		game_shared, game_server, zlib, server_link_other)
 
 	serverlaunch = {}
+	accountserverlaunch = {}
 	if platform == "macosx" then
 		serverlaunch = Link(launcher_settings, "serverlaunch", server_osxlaunch)
+		-- accountserverlaunch = Link(launcher_settings, "accountserverlaunch", accountserver_osxlaunch)
 	end
 
 	versionserver_exe = Link(server_settings, "versionsrv", versionserver,
@@ -288,7 +292,7 @@ function build(settings)
 	g = PseudoTarget("game".."_"..settings.config_name, client_exe, server_exe)
 
 	v = PseudoTarget("versionserver".."_"..settings.config_name, versionserver_exe)
-	a = PseudoTarget("accountserver".."_"..settings.config_name, accountserver_exe)
+	a = PseudoTarget("accountserver".."_"..settings.config_name, accountserver_exe, accountserverlaunch)
 	m = PseudoTarget("masterserver".."_"..settings.config_name, masterserver_exe)
 	t = PseudoTarget("tools".."_"..settings.config_name, tools)
 
@@ -377,6 +381,7 @@ if platform == "macosx" then
 			PseudoTarget("server_debug", "server_debug_ppc", "server_debug_x86")
 			PseudoTarget("client_release", "client_release_ppc", "client_release_x86")
 			PseudoTarget("client_debug", "client_debug_ppc", "client_debug_x86")
+			PseudoTarget("accountserver_release", "accountserver_release_ppc", "accountserver_release_x86")
 		elseif arch == "amd64" then
 			PseudoTarget("release", ppc_r, x86_r, x86_64_r)
 			PseudoTarget("debug", ppc_d, x86_d, x86_64_d)
@@ -384,6 +389,7 @@ if platform == "macosx" then
 			PseudoTarget("server_debug", "server_debug_ppc", "server_debug_x86", "server_debug_x86_64")
 			PseudoTarget("client_release", "client_release_ppc", "client_release_x86", "client_release_x86_64")
 			PseudoTarget("client_debug", "client_debug_ppc", "client_debug_x86", "client_debug_x86_64")
+			PseudoTarget("accountserver_release", "accountserver_release_ppc", "accountserver_release_x86", "accountserver_release_x86_64")
 		else
 			PseudoTarget("release", ppc_r)
 			PseudoTarget("debug", ppc_d)
@@ -391,6 +397,7 @@ if platform == "macosx" then
 			PseudoTarget("server_debug", "server_debug_ppc")
 			PseudoTarget("client_release", "client_release_ppc")
 			PseudoTarget("client_debug", "client_debug_ppc")
+			PseudoTarget("accountserver_release", "accountserver_release_ppc")
 		end
 	else
 		if arch == "ia32" then
@@ -400,6 +407,7 @@ if platform == "macosx" then
 			PseudoTarget("server_debug", "server_debug_x86")
 			PseudoTarget("client_release", "client_release_x86")
 			PseudoTarget("client_debug", "client_debug_x86")
+			PseudoTarget("accountserver_release", "accountserver_release_x86")
 		elseif arch == "amd64" then
 			PseudoTarget("release", x86_r, x86_64_r)
 			PseudoTarget("debug", x86_d, x86_64_d)
@@ -407,6 +415,7 @@ if platform == "macosx" then
 			PseudoTarget("server_debug", "server_debug_x86", "server_debug_x86_64")
 			PseudoTarget("client_release", "client_release_x86", "client_release_x86_64")
 			PseudoTarget("client_debug", "client_debug_x86", "client_debug_x86_64")
+			PseudoTarget("accountserver_release", "accountserver_release_x86", "accountserver_release_x86_64")
 		end
 	end
 else

@@ -340,7 +340,7 @@ CServerBrowser::CServerEntry *CServerBrowser::Find(const NETADDR &Addr)
 
 const char *CServerBrowser::GetServerName(const NETADDR &Addr) {
 	CServerBrowser::CServerEntry *pEntry = Find(Addr);
-	return ((pEntry && pEntry->m_GotInfo) ? pEntry->m_Info.m_aName : "unknown");
+	return ((pEntry && pEntry->m_InfoState == CServerEntry::STATE_READY) ? pEntry->m_Info.m_aName : "unknown");
 }
 
 void CServerBrowser::QueueRequest(CServerEntry *pEntry)

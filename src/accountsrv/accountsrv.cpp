@@ -60,9 +60,11 @@ class CRole {
 			dbg_msg("accountsrv", "roles: skipped multiple adding from %s in role %s", pRole->m_pName, m_pName ? m_pName : "Account role");		
 		}
 	}
+
 	bool IncludesRole(const CRole *pRole) const {
 		return IncludesRole(pRole->m_pName);	
 	}
+
 	bool IncludesRole(const char *pRoleName) const {
 		if(Equals(pRoleName)) {
 			return true;		
@@ -75,6 +77,7 @@ class CRole {
 		}
 		return false;
 	}
+
 	void Flatten() {
 		//TODO: pack all  combined roles into one role
 		//->faster searching
@@ -96,6 +99,7 @@ struct CAccount {
 	bool HasRole(const char*pRoleName) const {
 		return m_Role.IncludesRole(pRoleName);
 	}
+
 	bool HasRole(const CRole *pRole) const {
 		return m_Role.IncludesRole(pRole);
 	}	
@@ -603,7 +607,7 @@ int main(int argc, const char **argv) // ignore_convention
 	}
 
 	RegisterCommands();
-	m_pConsole->ExecuteFile("account.cfg");
+	m_pConsole->ExecuteFile("account_srv.cfg");
 	
 	// process pending commands
 	m_pConsole->StoreCommands(false);
@@ -684,7 +688,7 @@ int main(int argc, const char **argv) // ignore_convention
 			}
 			else if(Packet.m_DataSize >= sizeof(ACCOUNTSRV_LOGIN) &&
 				mem_comp(Packet.m_pData, ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN)) == 0) {
-					
+					Decode(((char*)Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN), Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN));
 					CUnpacker unpacker;
 					unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
 					//we dont need the header
@@ -732,7 +736,7 @@ int main(int argc, const char **argv) // ignore_convention
 				}
 			else if(Packet.m_DataSize >= sizeof(ACCOUNTSRV_REQUEST) &&
 				mem_comp(Packet.m_pData, ACCOUNTSRV_REQUEST, sizeof(ACCOUNTSRV_REQUEST)) == 0) {
-					
+				
 				CServerEntry *server = GetServer(&Packet.m_Address);
 				char aAddrStr[NETADDR_MAXSTRSIZE];
 				net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);

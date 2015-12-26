@@ -490,6 +490,12 @@ void IGameController::Tick()
 			m_RoundCount++;
 		}
 	}
+	else if(GameServer()->m_World.m_Paused && m_UnpauseTimer)
+	{
+		--m_UnpauseTimer;
+		if(!m_UnpauseTimer)
+			GameServer()->m_World.m_Paused = false;
+	}
 
 	if(m_FakeWarmup)
 	{
@@ -638,7 +644,6 @@ void IGameController::Snap(int SnappingClient)
 	pGameInfoObj->m_RoundStartTick = m_RoundStartTick;
 
 	pGameInfoObj->m_WarmupTimer = (m_FakeWarmup ? m_FakeWarmup : m_Warmup);
-
 
 	pGameInfoObj->m_ScoreLimit = g_Config.m_SvScorelimit;
 	pGameInfoObj->m_TimeLimit = g_Config.m_SvTimelimit;
