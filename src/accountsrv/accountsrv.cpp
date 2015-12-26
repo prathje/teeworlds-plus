@@ -60,9 +60,11 @@ class CRole {
 			dbg_msg("accountsrv", "roles: skipped multiple adding from %s in role %s", pRole->m_pName, m_pName ? m_pName : "Account role");		
 		}
 	}
+
 	bool IncludesRole(const CRole *pRole) const {
 		return IncludesRole(pRole->m_pName);	
 	}
+
 	bool IncludesRole(const char *pRoleName) const {
 		if(Equals(pRoleName)) {
 			return true;		
@@ -75,6 +77,7 @@ class CRole {
 		}
 		return false;
 	}
+
 	void Flatten() {
 		//TODO: pack all  combined roles into one role
 		//->faster searching
@@ -96,6 +99,7 @@ struct CAccount {
 	bool HasRole(const char*pRoleName) const {
 		return m_Role.IncludesRole(pRoleName);
 	}
+	
 	bool HasRole(const CRole *pRole) const {
 		return m_Role.IncludesRole(pRole);
 	}	
