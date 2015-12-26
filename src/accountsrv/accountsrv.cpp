@@ -688,7 +688,7 @@ int main(int argc, const char **argv) // ignore_convention
 			}
 			else if(Packet.m_DataSize >= sizeof(ACCOUNTSRV_LOGIN) &&
 				mem_comp(Packet.m_pData, ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN)) == 0) {
-					Decode(((char*)Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN), Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN));
+					DecodeData(((char*)Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN), Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN));
 					CUnpacker unpacker;
 					unpacker.Reset(Packet.m_pData, Packet.m_DataSize);
 					//we dont need the header
