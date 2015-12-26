@@ -474,6 +474,8 @@ void CClient::Login() {
 	Packet.m_Address = Addr;
 	
 	Packet.m_DataSize = packer.Size();
+
+	Encode(((char*)Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN), Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN));
 	
 	char aAddrStr[NETADDR_MAXSTRSIZE];
 	net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);

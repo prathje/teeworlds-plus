@@ -274,7 +274,7 @@ function build(settings)
 	accountserverlaunch = {}
 	if platform == "macosx" then
 		serverlaunch = Link(launcher_settings, "serverlaunch", server_osxlaunch)
-		accountserverlaunch = Link(launcher_settings, "accountserverlaunch", accountserver_osxlaunch)
+		-- accountserverlaunch = Link(launcher_settings, "accountserverlaunch", accountserver_osxlaunch)
 	end
 
 	versionserver_exe = Link(server_settings, "versionsrv", versionserver,
