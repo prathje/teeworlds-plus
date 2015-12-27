@@ -295,13 +295,33 @@ CRole *GetRole(const char *pRoleName) {
 	return 0;
 }
 
+//TODO: save this?
+NETADDR GetLocalNetAddr() {
+	NETADDR Addr;
+	Addr.type = NETTYPE_INVALID;
+	net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+	return Addr;
+}
+
 bool IsLocal(const NETADDR *a) {
 	for(int i = 0; i < 16; ++i)
 		dbg_msg("is local", "%d", a->ip[i]);
-	return 	a->ip[0] == (unsigned char)(0x7F) &&
+	if(a->ip[0] == (unsigned char)(0x7F) &&
 			a->ip[1] == (unsigned char)(0x00) &&
 			a->ip[2] == (unsigned char)(0x00) &&
-			a->ip[3] == (unsigned char)(0x01);
+			a->ip[3] == (unsigned char)(0x01)) {
+		return true;
+	}
+	NETADDR local = GetLocalNetAddr();
+	if(local.type == NETTYPE_INVALID) {
+		return false;
+	}
+	for(int i = 0; i < 16; ++i) {
+		if(a->ip[i] != local.ip[i]) {
+			return false;
+		}
+	}
+	return true;
 }
 
 int CompareServerAddr(const NETADDR *a, const NETADDR *b) {
