@@ -466,7 +466,7 @@ int AccountStatus(const CAccount *pAcc, const CServerEntry *pServer) {
 				return ACCOUNT_STATUS_ERROR;			
 			}
 					
-			if(net_addr_comp(&pAcc->m_ServerAddress, &pServer->m_Address) == 0) {
+			if(CompareServerAddr(&pAcc->m_ServerAddress, &pServer->m_Address) == 0) {
 				if(pServer->HasRights(pAcc)) {
 					return ACCOUNT_STATUS_OK;
 				}
