@@ -295,10 +295,26 @@ CRole *GetRole(const char *pRoleName) {
 	return 0;
 }
 
+bool IsLocal(const NETADDR *a) {
+	return 	a->ip[0] == (unsigned char)(0x7F) &&
+			a->ip[1] == (unsigned char)(0x00) &&
+			a->ip[2] == (unsigned char)(0x00) &&
+			a->ip[3] == (unsigned char)(0x01);
+}
+
+int CompareServerAddr(const NETADDR *a, const NETADDR *b) {
+
+	if (IsLocal(a) && IsLocal(b)) {
+		return a->port - b->port;
+	} else {
+		return net_addr_comp(a, b);
+	}
+}
+
 CServerEntry *GetServer(NETADDR *pInfo) {
 	for(int i = 0; i < m_lServers.size(); i++)
 	{
-		if(net_addr_comp(&m_lServers[i].m_Address, pInfo) == 0)
+		if(CompareServerAddr(&m_lServers[i].m_Address, pInfo) == 0)
 		{
 			return &m_lServers[i];
 		}
