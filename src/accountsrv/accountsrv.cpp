@@ -304,8 +304,6 @@ NETADDR GetLocalNetAddr() {
 }
 
 bool IsLocal(const NETADDR *a) {
-	for(int i = 0; i < 16; ++i)
-		dbg_msg("is local", "%d", a->ip[i]);
 	if(a->ip[0] == (unsigned char)(0x7F) &&
 			a->ip[1] == (unsigned char)(0x00) &&
 			a->ip[2] == (unsigned char)(0x00) &&
@@ -327,7 +325,6 @@ bool IsLocal(const NETADDR *a) {
 int CompareServerAddr(const NETADDR *a, const NETADDR *b) {
 
 	if (IsLocal(a) && IsLocal(b)) {
-		dbg_msg("local port comp", "a: %d, b: %d", a->port, b->port);
 		return a->port - b->port;
 	} else {
 		return net_addr_comp(a, b);
@@ -703,12 +700,15 @@ int main(int argc, const char **argv) // ignore_convention
 			{
 				CAccount *pAcc = GetAccount(&Packet.m_Address);
 				array<const CServerEntry*> lPermittedServers = GetServersForAccount(pAcc);
+
+				char aAddrStr[NETADDR_MAXSTRSIZE];
+				net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
 				
 				if(pAcc && pAcc->m_Valid) {				
 					// someone requested the list
-					dbg_msg("accountsrv", "requested, responding with %d servers", lPermittedServers.size());
+					dbg_msg("accountsrv", "%s requested, responding with %d servers", aAddrStr, lPermittedServers.size());
 				} else {				
-					dbg_msg("accountsrv", "bad list request: responding with %d servers", lPermittedServers.size());
+					dbg_msg("accountsrv", "bad list request from %s: responding with %d servers", aAddrStr, lPermittedServers.size());
 				}
 				
 				CNetChunk p;
@@ -757,7 +757,7 @@ int main(int argc, const char **argv) // ignore_convention
 							acc->m_Valid = true;
 							acc->m_LastActive = time_get();
 						}
-						dbg_msg("accountsrv", "login response: name %s, response %d", pName, response);
+						dbg_msg("accountsrv", "login response: to %s, name %s, response %d", aAddrStr, pName, response);
 					}		
 					
 					static unsigned char aData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1];

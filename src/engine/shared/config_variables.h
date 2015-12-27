@@ -17,7 +17,7 @@ MACRO_CONFIG_INT(ConsoleOutputLevel, console_output_level, 0, 0, 2, CFGFLAG_CLIE
 
 //account
 MACRO_CONFIG_STR(AccountPassword, account_pw, 64, "",  CFGFLAG_SAVE|CFGFLAG_CLIENT, "Account Password used for login")
-MACRO_CONFIG_STR(AccountserverAddress, accountserver_address, 64, "127.0.0.1:8302", CFGFLAG_CLIENT|CFGFLAG_SERVER|CFGFLAG_SAVE, "Account server address")
+MACRO_CONFIG_STR(AccountserverAddress, accountserver_address, 64, "127.0.0.1:8302", CFGFLAG_CLIENT|CFGFLAG_SERVER|CFGFLAG_ACCOUNT|CFGFLAG_SAVE, "Account server address")
 
 MACRO_CONFIG_INT(ClCpuThrottle, cl_cpu_throttle, 0, 0, 100, CFGFLAG_SAVE|CFGFLAG_CLIENT, "")
 MACRO_CONFIG_INT(ClEditor, cl_editor, 0, 0, 1, CFGFLAG_CLIENT, "")
