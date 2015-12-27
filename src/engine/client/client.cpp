@@ -1518,6 +1518,9 @@ void CClient::PumpNetwork()
 	{
 		if(Packet.m_ClientID != -1)
 			ProcessServerPacket(&Packet);
+		else {
+			ProcessConnlessPacket(&Packet);
+		}
 	}
 
 	// process connless packets data
@@ -1788,7 +1791,7 @@ void CClient::InitInterfaces()
 	m_pStorage = Kernel()->RequestInterface<IStorage>();
 
 	//
-	m_ServerBrowser.SetBaseInfo(&m_ContactClient, m_pGameClient->NetVersion());
+	m_ServerBrowser.SetBaseInfo(&m_NetClient, m_pGameClient->NetVersion());
 	m_Friends.Init();
 }
 
