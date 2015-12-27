@@ -296,6 +296,8 @@ CRole *GetRole(const char *pRoleName) {
 }
 
 bool IsLocal(const NETADDR *a) {
+	for(int i = 0; i < 16; ++i)
+		dbg_msg("is local", "%d", a->ip[i]);
 	return 	a->ip[0] == (unsigned char)(0x7F) &&
 			a->ip[1] == (unsigned char)(0x00) &&
 			a->ip[2] == (unsigned char)(0x00) &&
@@ -305,6 +307,7 @@ bool IsLocal(const NETADDR *a) {
 int CompareServerAddr(const NETADDR *a, const NETADDR *b) {
 
 	if (IsLocal(a) && IsLocal(b)) {
+		dbg_msg("local port comp", "a: %d, b: %d", a->port, b->port);
 		return a->port - b->port;
 	} else {
 		return net_addr_comp(a, b);
