@@ -700,12 +700,15 @@ int main(int argc, const char **argv) // ignore_convention
 			{
 				CAccount *pAcc = GetAccount(&Packet.m_Address);
 				array<const CServerEntry*> lPermittedServers = GetServersForAccount(pAcc);
+
+				char aAddrStr[NETADDR_MAXSTRSIZE];
+				net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
 				
 				if(pAcc && pAcc->m_Valid) {				
 					// someone requested the list
-					dbg_msg("accountsrv", "requested, responding with %d servers", lPermittedServers.size());
+					dbg_msg("accountsrv", "%s requested, responding with %d servers", aAddrStr, lPermittedServers.size());
 				} else {				
-					dbg_msg("accountsrv", "bad list request: responding with %d servers", lPermittedServers.size());
+					dbg_msg("accountsrv", "bad list request from %s: responding with %d servers", aAddrStr, lPermittedServers.size());
 				}
 				
 				CNetChunk p;
@@ -754,7 +757,7 @@ int main(int argc, const char **argv) // ignore_convention
 							acc->m_Valid = true;
 							acc->m_LastActive = time_get();
 						}
-						dbg_msg("accountsrv", "login response: name %s, response %d", pName, response);
+						dbg_msg("accountsrv", "login response: to %s, name %s, response %d", aAddrStr, pName, response);
 					}		
 					
 					static unsigned char aData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1];
