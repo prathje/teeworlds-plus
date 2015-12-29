@@ -96,6 +96,10 @@ struct CAccount {
 	char m_Password[MAX_ACCOUNT_PASSWORD_LENGTH];
 	CRole m_Role;
 	
+	CAccount() {
+		m_LastActive = 0;
+	}
+	
 	bool HasRole(const char*pRoleName) const {
 		return m_Role.IncludesRole(pRoleName);
 	}
@@ -115,6 +119,11 @@ struct CServerEntry
 	int64 m_LastRequest;
 	int m_NumRequest;
 	array<const CRole*> m_lRequiredRoles;
+	
+	CServerEntry() {
+		m_LastRequest = 0;
+		m_NumRequest = 0;
+	}
 	
 	bool HasRights(const CAccount *pAcc) const {
 		
