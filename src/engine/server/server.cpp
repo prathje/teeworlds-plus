@@ -1277,6 +1277,7 @@ void CServer::PumpNetwork()
 						dbg_msg("Account", "%s got a response: %d", pAccountName, response);
 						int ClientID = -1;
 						for(int c = 0; c < MAX_CLIENTS; ++c) {
+							dbg_msg("comparing: %s with %s", m_aClients[c].m_aAccountName, pAccountName);
 							if(str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
 								if(m_aClients[c].m_State == CClient::STATE_INGAME) {
 									//kick this player (logged in from another location)							
