@@ -622,18 +622,21 @@ int main(int argc, const char **argv) // ignore_convention
 	//m_NetBan.Init(m_pConsole, pStorage);
 	if(argc > 1) // ignore_convention
 		m_pConsole->ParseArguments(argc-1, &argv[1]); // ignore_convention
+		
+	RegisterCommands();
+	m_pConsole->ExecuteFile("account_srv.cfg");
 
 	if(g_Config.m_Bindaddr[0] && net_host_lookup(g_Config.m_Bindaddr, &BindAddr, NETTYPE_ALL) == 0)
 	{
 		// got bindaddr
 		BindAddr.type = NETTYPE_ALL;
-		BindAddr.port = ACCOUNTSRV_PORT;
+		BindAddr.port = g_Config.m_SvPort;
 	}
 	else
 	{
 		mem_zero(&BindAddr, sizeof(BindAddr));
 		BindAddr.type = NETTYPE_ALL;
-		BindAddr.port = ACCOUNTSRV_PORT;
+		BindAddr.port = g_Config.m_SvPort;
 	}
 
 	if(!m_NetOp.Open(BindAddr, 0))
@@ -642,9 +645,6 @@ int main(int argc, const char **argv) // ignore_convention
 		return -1;
 	}
 
-	RegisterCommands();
-	m_pConsole->ExecuteFile("account_srv.cfg");
-	
 	// process pending commands
 	m_pConsole->StoreCommands(false);
 	dbg_msg("accountsrv", "started");
