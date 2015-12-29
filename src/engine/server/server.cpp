@@ -268,7 +268,7 @@ void CServerBan::ConBanExt(IConsole::IResult *pResult, void *pUser)
 }
 
 
-void CServer::CClient::Reset()
+void CServer::CClient::Reset(bool ResetAccount)
 {
 	// reset input
 	for(int i = 0; i < 200; i++)
@@ -281,9 +281,11 @@ void CServer::CClient::Reset()
 	m_LastInputTick = -1;
 	m_SnapRate = CClient::SNAPRATE_INIT;
 	m_Score = 0;
-	m_LastAccountRequestTime = 0;
-	m_NumAccountRequests = 0;
-	mem_zero(&m_aAccountName[0], sizeof(MAX_ACCOUNT_NAME_LENGTH));
+	if (ResetAccount) {
+		m_LastAccountRequestTime = 0;
+		m_NumAccountRequests = 0;
+		mem_zero(&m_aAccountName[0], sizeof(MAX_ACCOUNT_NAME_LENGTH));
+	}
 }
 
 CServer::CServer() : m_DemoRecorder(&m_SnapshotDelta)
@@ -914,7 +916,7 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 						m_NetServer.Drop(ClientID, "You need an Account client with enabled auto login in order to join this server!");
 						return;
 					}
-					
+					m_aClients[ClientID].m_LastAccountRequestTime = time_get();					
 					m_aClients[ClientID].m_State = CClient::STATE_ACCOUNT_VERIFICATION;
 					str_copy(m_aClients[ClientID].m_aAccountName, pAccountName, MAX_ACCOUNT_NAME_LENGTH);
 				}
@@ -1277,9 +1279,10 @@ void CServer::PumpNetwork()
 						dbg_msg("Account", "%s got a response: %d", pAccountName, response);
 						int ClientID = -1;
 						for(int c = 0; c < MAX_CLIENTS; ++c) {
-							dbg_msg("comparing: %s with %s", m_aClients[c].m_aAccountName, pAccountName);
+							dbg_msg("Comparing  %s with %s, %d, %d" , m_aClients[c].m_aAccountName, pAccountName, str_length(m_aClients[c].m_aAccountName), str_length(pAccountName) )
 							if(str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
-								if(m_aClients[c].m_State == CClient::STATE_INGAME) {
+								dbg_msg("found client with name %s %d", pAccountName, c);
+								if(m_aClients[c].m_State >= CClient::STATE_READY) {
 									//kick this player (logged in from another location)							
 									m_NetServer.Drop(c, str_length(m_aClients[c].m_aAccountName) > 0 ? "You logged in from another location" : "A player with the same name logged in");
 								} else if(m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION) {								
@@ -1289,7 +1292,9 @@ void CServer::PumpNetwork()
 										} else {
 											m_NetServer.Drop(c, "You logged in from another location");							
 										}							
-									}								
+									}else {
+										dbg_msg("client is not on this server %s", pAccountName);
+									}							
 								}							
 							}
 						}
@@ -1525,7 +1530,7 @@ int CServer::Run()
 							continue;
 
 						SendMap(c);
-						m_aClients[c].Reset();
+						m_aClients[c].Reset(false);
 						m_aClients[c].m_State = CClient::STATE_CONNECTING;
 					}
 

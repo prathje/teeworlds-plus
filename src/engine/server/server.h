@@ -34,7 +34,7 @@ public:
 
 	CSnapIDPool();
 
-	void Reset();
+	void Reset(bool ResetAccount = true);
 	void RemoveFirstTimeout();
 	int NewID();
 	void TimeoutIDs();
