@@ -396,7 +396,9 @@ CServerBrowser::CServerEntry *CServerBrowser::Add(const NETADDR &Addr)
 
 	pEntry->m_Info.m_Latency = 999;
 	net_addr_str(&Addr, pEntry->m_Info.m_aAddress, sizeof(pEntry->m_Info.m_aAddress), true);
-	str_copy(pEntry->m_Info.m_aName, pEntry->m_Info.m_aAddress, sizeof(pEntry->m_Info.m_aName));
+	
+	str_copy(pEntry->m_Info.m_aName, g_Config.m_Debug ? pEntry->m_Info.m_aAddress : "unknown", sizeof(pEntry->m_Info.m_aName));
+	
 
 	// check if it's a favorite
 	for(int i = 0; i < m_NumFavoriteServers; i++)

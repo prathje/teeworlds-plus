@@ -131,7 +131,7 @@ public:
 		char m_aAccountName[MAX_ACCOUNT_NAME_LENGTH];
 		int64 m_LastAccountRequestTime;
 		int m_NumAccountRequests;
-		void Reset();
+		void Reset(bool ResetAccount = true);
 	};
 	
 	void AccountRequest(int ClientID);

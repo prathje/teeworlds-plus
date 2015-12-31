@@ -21,7 +21,6 @@ enum {
 	MAX_ACCOUNT_PASSWORD_LENGTH = 64,
 	MAX_ACCOUNT_NAME_LENGTH = 64,
 };
-static const int ACCOUNTSRV_PORT = 8302;
 
 //sent by and send to client
 
