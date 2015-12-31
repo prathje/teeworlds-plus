@@ -101,7 +101,7 @@ MACRO_CONFIG_INT(SvAutoDemoMax, sv_auto_demo_max, 10, 0, 1000, CFGFLAG_SERVER, "
 //account
 MACRO_CONFIG_INT(SvAccountMaxRequests, sv_account_max_requests, 1, 1, 1000, CFGFLAG_SERVER, "Maximum number of request for a client authentication.")
 MACRO_CONFIG_INT(SvAccountRequestTime, sv_account_request_time, 500, 1, 300000, CFGFLAG_SERVER, "Time difference between two requests")
-MACRO_CONFIG_INT(SvUseAccounts, sv_accounts, 1, 0, 1, CFGFLAG_SERVER, "Enable/disable accounts")
+MACRO_CONFIG_INT(SvUseAccounts, sv_accounts, 1, 0, 2, CFGFLAG_SERVER, "Enable/disable accounts 2: dont check port")
 
 MACRO_CONFIG_STR(EcBindaddr, ec_bindaddr, 128, "localhost", CFGFLAG_ECON, "Address to bind the external console to. Anything but 'localhost' is dangerous")
 MACRO_CONFIG_INT(EcPort, ec_port, 0, 0, 0, CFGFLAG_ECON, "Port to use for the external console")
