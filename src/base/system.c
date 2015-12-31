@@ -614,6 +614,15 @@ int net_addr_comp(const NETADDR *a, const NETADDR *b)
 	return mem_comp(a, b, sizeof(NETADDR));
 }
 
+int net_addr_comp_no_port(const NETADDR *a, const NETADDR *b)
+{
+	NETADDR aCopy = *a;
+	NETADDR bCopy = *b;
+	aCopy.port = 0;
+	bCopy.port = 0;
+	return net_addr_comp(&aCopy, &bCopy);
+}
+
 void net_addr_str(const NETADDR *addr, char *string, int max_length, int add_port)
 {
 	if(addr->type == NETTYPE_IPV4)
