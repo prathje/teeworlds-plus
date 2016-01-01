@@ -18,7 +18,27 @@ CCamera::CCamera()
 void CCamera::OnRender()
 {
 	//vec2 center;
-	m_Zoom = 1.0f;
+
+	if(m_pClient->m_Snap.m_SpecInfo.m_Active) {
+
+		if (g_Config.m_ClCameraSmoothZoom) {
+			float oldZoom = m_Zoom;
+
+			float diff = (float)g_Config.m_ClCameraZoom * 0.001f - oldZoom;
+
+			float factor = (diff*diff)/ ((float)g_Config.m_ClCameraSmoothZoom*0.001f);
+
+			if (diff >= 0) {
+				m_Zoom += factor;
+			} else {
+				m_Zoom -= factor;
+			}
+		} else {
+			m_Zoom = (float)g_Config.m_ClCameraZoom * 0.001f;
+		}
+	} else {
+		m_Zoom = 1.0f;
+	}
 
 	// update camera center
 	if(m_pClient->m_Snap.m_SpecInfo.m_Active && !m_pClient->m_Snap.m_SpecInfo.m_UsePosition)

@@ -37,6 +37,10 @@ MACRO_CONFIG_STR(ClVersionServer, cl_version_server, 100, "version.teeworlds.com
 
 MACRO_CONFIG_STR(ClLanguagefile, cl_languagefile, 255, "", CFGFLAG_CLIENT|CFGFLAG_SAVE, "What language file to use")
 
+
+MACRO_CONFIG_INT(ClCameraZoom, cl_camera_zoom, 1000, 1, 20000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera zoom")
+MACRO_CONFIG_INT(ClCameraSmoothZoom, cl_camera_smooth_zoom, 1000, 0, 10000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera zoom smoothness 0 = disabled")
+
 MACRO_CONFIG_INT(PlayerUseCustomColor, player_use_custom_color, 0, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Toggles usage of custom colors")
 MACRO_CONFIG_INT(PlayerColorBody, player_color_body, 65408, 0, 0xFFFFFF, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Player body color")
 MACRO_CONFIG_INT(PlayerColorFeet, player_color_feet, 65408, 0, 0xFFFFFF, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Player feet color")

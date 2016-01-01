@@ -1286,7 +1286,7 @@ void CServer::PumpNetwork()
 									//kick this player (logged in from another location)							
 									m_NetServer.Drop(c, str_length(m_aClients[c].m_aAccountName) > 0 ? "You logged in from another location" : "A player with the same name logged in");
 								} else if(m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION) {								
-									if(net_addr_comp(&clientAddr, m_NetServer.ClientAddr(c)) == 0) {
+									if(net_addr_comp(&clientAddr, m_NetServer.ClientAddr(c)) == 0 || (g_Config.m_SvUseAccounts == 2 && net_addr_comp_no_port(&clientAddr, m_NetServer.ClientAddr(c)) == 0))  {
 										if(ClientID == -1) {
 											ClientID = c;
 										} else {
