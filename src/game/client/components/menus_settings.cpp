@@ -95,6 +95,15 @@ void CMenus::RenderSettingsGeneral(CUIRect MainView)
 		Left.HSplitTop(20.0f, &Button, &Left);
 		if(DoButton_CheckBox(&g_Config.m_ClShowhud, Localize("Show ingame HUD"), g_Config.m_ClShowhud, &Button))
 			g_Config.m_ClShowhud ^= 1;
+		
+		Left.HSplitTop(5.0f, 0, &Left);
+		Left.HSplitTop(20.0f, &Button, &Left);
+		if(g_Config.m_ClShowhud) {
+			// show health and armor?
+			
+			if(DoButton_CheckBox(&g_Config.m_ClShowHealthAndArmor, Localize("Show health and armor"), g_Config.m_ClShowHealthAndArmor, &Button))
+				g_Config.m_ClShowHealthAndArmor ^= 1;
+		}
 
 		// chat messages
 		Left.HSplitTop(5.0f, 0, &Left);
@@ -483,6 +492,8 @@ static CKeyInfo gs_aKeys[] =
 	{ "Screenshot", "screenshot", 0 },
 	{ "Scoreboard", "+scoreboard", 0 },
 	{ "Respawn", "kill", 0 },
+	{ "Zoom in", "zoom_in", 0 },
+	{ "Zoom out", "zoom_out", 0 }
 };
 
 /*	This is for scripts/update_localization.py to work, don't remove!
@@ -629,10 +640,8 @@ void CMenus::RenderSettingsControls(CUIRect MainView)
 		TextRender()->Text(0, MiscSettings.x, MiscSettings.y, 14.0f*UI()->Scale(), Localize("Miscellaneous"), -1);
 
 		MiscSettings.HSplitTop(14.0f+5.0f+10.0f, 0, &MiscSettings);
-		UiDoGetButtons(17, 26, MiscSettings);
-	}
-
-}
+		UiDoGetButtons(17, 28, MiscSettings);
+	}}
 
 void CMenus::RenderSettingsGraphics(CUIRect MainView)
 {
@@ -889,6 +898,71 @@ void CMenus::RenderSettingsSound(CUIRect MainView)
 	}
 }
 
+void CMenus::RenderSettingsCamera(CUIRect MainView)
+{
+	CUIRect Button;
+	MainView.VSplitMid(&MainView, 0);
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	
+	
+	// camera zoom
+	{
+		char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "%d", g_Config.m_ClCameraZoom);
+		MainView.HSplitTop(20.0f, &Button, &MainView);
+		UI()->DoLabelScaled(&Button, Localize("Camera Zoom"), 14.0f, -1);
+		Button.VSplitLeft(190.0f, 0, &Button);
+		static float Offset = 0.0f;
+		DoEditBox(&g_Config.m_ClCameraZoom, &Button, aBuf, sizeof(aBuf), 14.0f, &Offset);
+		g_Config.m_ClCameraZoom = clamp(str_toint(aBuf), 500, 20000);
+	}
+	
+	// camera zoom step
+	{
+		char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "%d", g_Config.m_ClCameraZoomStep);
+		MainView.HSplitTop(20.0f, &Button, &MainView);
+		UI()->DoLabelScaled(&Button, Localize("Camera Zoom Step"), 14.0f, -1);
+		Button.VSplitLeft(190.0f, 0, &Button);
+		static float Offset = 0.0f;
+		DoEditBox(&g_Config.m_ClCameraZoomStep, &Button, aBuf, sizeof(aBuf), 14.0f, &Offset);
+		g_Config.m_ClCameraZoomStep = clamp(str_toint(aBuf), 1, 10000);
+	}
+	
+	
+	static int s_ZoomEnabled = g_Config.m_ClCameraSmoothZoom;
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	if(DoButton_CheckBox(&g_Config.m_ClCameraSmoothZoom, Localize("Use smooth camera zoom"), g_Config.m_ClCameraSmoothZoom, &Button))
+	{
+		g_Config.m_ClCameraSmoothZoom ^= 1;
+	}
+
+	if(!g_Config.m_ClCameraSmoothZoom)
+		return;
+	
+	// camera zoom smoothness
+	{
+		char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "%d", g_Config.m_ClCameraSmoothZoomFactor);
+		MainView.HSplitTop(20.0f, &Button, &MainView);
+		UI()->DoLabelScaled(&Button, Localize("Camera Smooth Zoom"), 14.0f, -1);
+		Button.VSplitLeft(190.0f, 0, &Button);
+		static float Offset = 0.0f;
+		DoEditBox(&g_Config.m_ClCameraSmoothZoomFactor, &Button, aBuf, sizeof(aBuf), 14.0f, &Offset);
+		g_Config.m_ClCameraSmoothZoomFactor = clamp(str_toint(aBuf), 1, 1000);
+	}
+	
+	static int s_ResizeBackground = g_Config.m_ClCameraZoomResizeBackground;
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	if(DoButton_CheckBox(&g_Config.m_ClCameraZoomResizeBackground, Localize("Resize the background"), g_Config.m_ClCameraZoomResizeBackground, &Button))
+	{
+		g_Config.m_ClCameraZoomResizeBackground ^= 1;
+	}
+	
+}
+
 class CLanguage
 {
 public:
@@ -1034,7 +1108,8 @@ void CMenus::RenderSettings(CUIRect MainView)
 		("Tee"),
 		Localize("Controls"),
 		Localize("Graphics"),
-		Localize("Sound")};
+		Localize("Sound"),
+		Localize("Camera")};
 
 	int NumTabs = (int)(sizeof(aTabs)/sizeof(*aTabs));
 
@@ -1062,6 +1137,8 @@ void CMenus::RenderSettings(CUIRect MainView)
 		RenderSettingsGraphics(MainView);
 	else if(s_SettingsPage == 6)
 		RenderSettingsSound(MainView);
+	 if(s_SettingsPage == 7)
+		RenderSettingsCamera(MainView);
 
 	if(m_NeedRestartGraphics || m_NeedRestartSound)
 		UI()->DoLabel(&RestartWarning, Localize("You must restart the game for all settings to take effect."), 15.0f, -1);

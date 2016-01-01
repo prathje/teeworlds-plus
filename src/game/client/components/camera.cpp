@@ -22,20 +22,13 @@ void CCamera::OnRender()
 	if(m_pClient->m_Snap.m_SpecInfo.m_Active) {
 
 		if (g_Config.m_ClCameraSmoothZoom) {
-			float oldZoom = m_Zoom;
-
-			float diff = (float)g_Config.m_ClCameraZoom * 0.001f - oldZoom;
-
-			float factor = (diff*diff)/ ((float)g_Config.m_ClCameraSmoothZoom*0.001f);
-
-			if (diff >= 0) {
-				m_Zoom += factor;
-			} else {
-				m_Zoom -= factor;
-			}
+			float diff = (float)g_Config.m_ClCameraZoom * 0.001f - m_Zoom;
+			float factor = diff* (float)g_Config.m_ClCameraSmoothZoomFactor * 0.001f;
+			m_Zoom += factor;			
 		} else {
 			m_Zoom = (float)g_Config.m_ClCameraZoom * 0.001f;
-		}
+		}		
+		m_Zoom = clamp(m_Zoom, g_Config.m_ClCameraZoomMin * 0.001f,  g_Config.m_ClCameraZoomMax * 0.001f);
 	} else {
 		m_Zoom = 1.0f;
 	}
@@ -78,4 +71,20 @@ void CCamera::OnRender()
 	}
 
 	m_PrevCenter = m_Center;
+}
+
+void CCamera::ConZoomIn(IConsole::IResult *pResult, void *pUserData)
+{
+	CCamera *pCamera = (CCamera *)pUserData;
+	g_Config.m_ClCameraZoom = clamp(g_Config.m_ClCameraZoom-g_Config.m_ClCameraZoomStep, g_Config.m_ClCameraZoomMin, g_Config.m_ClCameraZoomMax);
+}
+
+void CCamera::ConZoomOut(IConsole::IResult *pResult, void *pUserData)
+{
+	g_Config.m_ClCameraZoom = clamp(g_Config.m_ClCameraZoom+g_Config.m_ClCameraZoomStep, g_Config.m_ClCameraZoomMin, g_Config.m_ClCameraZoomMax);
+}
+
+void CCamera::OnConsoleInit() {
+	Console()->Register("zoom_in", "", CFGFLAG_CLIENT, ConZoomIn, this, "Zoom in");
+	Console()->Register("zoom_out", "", CFGFLAG_CLIENT, ConZoomOut, this, "Zoom out");
 }

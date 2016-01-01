@@ -14,6 +14,7 @@ MACRO_CONFIG_INT(ClNameplatesSize, cl_nameplates_size, 50, 0, 100, CFGFLAG_CLIEN
 MACRO_CONFIG_INT(ClAutoswitchWeapons, cl_autoswitch_weapons, 0, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Auto switch weapon on pickup")
 
 MACRO_CONFIG_INT(ClShowhud, cl_showhud, 1, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Show ingame HUD")
+MACRO_CONFIG_INT(ClShowHealthAndArmor, cl_show_health_and_armor, 1, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Show health and armor")
 MACRO_CONFIG_INT(ClShowChatFriends, cl_show_chat_friends, 0, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Show only chat messages from friends")
 MACRO_CONFIG_INT(ClShowfps, cl_showfps, 0, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Show ingame FPS counter")
 
@@ -37,9 +38,13 @@ MACRO_CONFIG_STR(ClVersionServer, cl_version_server, 100, "version.teeworlds.com
 
 MACRO_CONFIG_STR(ClLanguagefile, cl_languagefile, 255, "", CFGFLAG_CLIENT|CFGFLAG_SAVE, "What language file to use")
 
-
-MACRO_CONFIG_INT(ClCameraZoom, cl_camera_zoom, 1000, 1, 20000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera zoom")
-MACRO_CONFIG_INT(ClCameraSmoothZoom, cl_camera_smooth_zoom, 1000, 0, 10000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera zoom smoothness 0 = disabled")
+MACRO_CONFIG_INT(ClCameraZoom, cl_camera_zoom, 1000, 500, 20000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera zoom")
+MACRO_CONFIG_INT(ClCameraZoomMin, cl_camera_zoom_min, 500, 500, 20000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera min zoom")
+MACRO_CONFIG_INT(ClCameraZoomMax, cl_camera_zoom_max, 20000, 500, 20000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera max zoom")
+MACRO_CONFIG_INT(ClCameraZoomStep, cl_camera_zoom_step, 500, 1, 10000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera zoom step")
+MACRO_CONFIG_INT(ClCameraSmoothZoom, cl_camera_smooth_zoom, 1, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Enable camera zoom smoothness 0 = disabled")
+MACRO_CONFIG_INT(ClCameraSmoothZoomFactor, cl_camera_smooth_zoom_factor, 10, 1, 1000, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Camera zoom smoothness factor")
+MACRO_CONFIG_INT(ClCameraZoomResizeBackground, cl_camera_zoom_resize_bg, 1, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Resize the background if in camera zoom")
 
 MACRO_CONFIG_INT(PlayerUseCustomColor, player_use_custom_color, 0, 0, 1, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Toggles usage of custom colors")
 MACRO_CONFIG_INT(PlayerColorBody, player_color_body, 65408, 0, 0xFFFFFF, CFGFLAG_CLIENT|CFGFLAG_SAVE, "Player body color")

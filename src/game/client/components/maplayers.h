@@ -12,7 +12,7 @@ class CMapLayers : public CComponent
 	int m_LastLocalTick;
 	bool m_EnvelopeUpdate;
 
-	void MapScreenToGroup(float CenterX, float CenterY, CMapItemGroup *pGroup);
+	void MapScreenToGroup(float CenterX, float CenterY, CMapItemGroup *pGroup, float Zoom = 1.0f);
 	static void EnvelopeEval(float TimeOffset, int Env, float *pChannels, void *pUser);
 public:
 	enum

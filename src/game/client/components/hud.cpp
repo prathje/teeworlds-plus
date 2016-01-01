@@ -383,7 +383,7 @@ void CHud::RenderCursor()
 
 void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 {
-	if(!pCharacter)
+	if(!pCharacter || !g_Config.m_ClShowHealthAndArmor)
 		return;
 
 	//mapscreen_to_group(gacenter_x, center_y, layers_game_group());
