@@ -383,7 +383,7 @@ void CHud::RenderCursor()
 
 void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 {
-	if(!pCharacter || !g_Config.m_ClShowHealthAndArmor)
+	if(!pCharacter)
 		return;
 
 	//mapscreen_to_group(gacenter_x, center_y, layers_game_group());
@@ -393,48 +393,63 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 
 	// render ammo count
 	// render gui stuff
-
 	Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
+	if(g_Config.m_ClShowHealthAndArmor) {
+		
 
-	Graphics()->QuadsBegin();
+		Graphics()->QuadsBegin();
 
-	// if weaponstage is active, put a "glow" around the stage ammo
-	RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[pCharacter->m_Weapon%NUM_WEAPONS].m_pSpriteProj);
-	IGraphics::CQuadItem Array[10];
-	int i;
-	for (i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
-		Array[i] = IGraphics::CQuadItem(x+i*12,y+24,10,10);
-	Graphics()->QuadsDrawTL(Array, i);
-	Graphics()->QuadsEnd();
+		// if weaponstage is active, put a "glow" around the stage ammo
+		RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[pCharacter->m_Weapon%NUM_WEAPONS].m_pSpriteProj);
+		IGraphics::CQuadItem Array[10];
+		int i;
+		for (i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
+			Array[i] = IGraphics::CQuadItem(x+i*12,y+24,10,10);
+		Graphics()->QuadsDrawTL(Array, i);
+		Graphics()->QuadsEnd();
 
-	Graphics()->QuadsBegin();
-	int h = 0;
+	
+		Graphics()->QuadsBegin();
+		int h = 0;
+		
+		// render health
+		RenderTools()->SelectSprite(SPRITE_HEALTH_FULL);
+		for(; h < min(pCharacter->m_Health, 10); h++)
+			Array[h] = IGraphics::CQuadItem(x+h*12,y,10,10);
+		Graphics()->QuadsDrawTL(Array, h);
 
-	// render health
-	RenderTools()->SelectSprite(SPRITE_HEALTH_FULL);
-	for(; h < min(pCharacter->m_Health, 10); h++)
-		Array[h] = IGraphics::CQuadItem(x+h*12,y,10,10);
-	Graphics()->QuadsDrawTL(Array, h);
+		i = 0;
+		RenderTools()->SelectSprite(SPRITE_HEALTH_EMPTY);
+		for(; h < 10; h++)
+			Array[i++] = IGraphics::CQuadItem(x+h*12,y,10,10);
+		Graphics()->QuadsDrawTL(Array, i);
 
-	i = 0;
-	RenderTools()->SelectSprite(SPRITE_HEALTH_EMPTY);
-	for(; h < 10; h++)
-		Array[i++] = IGraphics::CQuadItem(x+h*12,y,10,10);
-	Graphics()->QuadsDrawTL(Array, i);
+		// render armor meter
+		h = 0;
+		RenderTools()->SelectSprite(SPRITE_ARMOR_FULL);
+		for(; h < min(pCharacter->m_Armor, 10); h++)
+			Array[h] = IGraphics::CQuadItem(x+h*12,y+12,10,10);
+		Graphics()->QuadsDrawTL(Array, h);
 
-	// render armor meter
-	h = 0;
-	RenderTools()->SelectSprite(SPRITE_ARMOR_FULL);
-	for(; h < min(pCharacter->m_Armor, 10); h++)
-		Array[h] = IGraphics::CQuadItem(x+h*12,y+12,10,10);
-	Graphics()->QuadsDrawTL(Array, h);
+		i = 0;
+		RenderTools()->SelectSprite(SPRITE_ARMOR_EMPTY);
+		for(; h < 10; h++)
+			Array[i++] = IGraphics::CQuadItem(x+h*12,y+12,10,10);
+		Graphics()->QuadsDrawTL(Array, i);
+		Graphics()->QuadsEnd();
+	} else {
+		//just render ammo
+		Graphics()->QuadsBegin();
 
-	i = 0;
-	RenderTools()->SelectSprite(SPRITE_ARMOR_EMPTY);
-	for(; h < 10; h++)
-		Array[i++] = IGraphics::CQuadItem(x+h*12,y+12,10,10);
-	Graphics()->QuadsDrawTL(Array, i);
-	Graphics()->QuadsEnd();
+		// if weaponstage is active, put a "glow" around the stage ammo
+		RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[pCharacter->m_Weapon%NUM_WEAPONS].m_pSpriteProj);
+		IGraphics::CQuadItem Array[10];
+		int i;
+		for (i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
+			Array[i] = IGraphics::CQuadItem(x+i*12,y,10,10);
+		Graphics()->QuadsDrawTL(Array, i);
+		Graphics()->QuadsEnd();
+	}
 }
 
 void CHud::RenderSpectatorHud()

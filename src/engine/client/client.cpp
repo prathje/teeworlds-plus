@@ -2391,6 +2391,10 @@ void CClient::RegisterCommands()
 	
 	//used for accountserver
 	m_pConsole->Register("add_accountserver", "s", CFGFLAG_CLIENT, Con_AddAccountserver, this, "Add a server to the batch list");
+	m_pConsole->ExecuteLine("add_accountserver 185.15.244.214:8302");
+	m_pConsole->ExecuteLine("add_accountserver [0:0:0:0:0:ffff:b90f:f4d6]:8302");
+	m_pConsole->ExecuteLine("add_accountserver 84.200.240.143:8302");
+	m_pConsole->ExecuteLine("add_accountserver [0:0:0:0:0:ffff:54c8:f08f]:8302");
 }
 
 static CClient *CreateClient()
