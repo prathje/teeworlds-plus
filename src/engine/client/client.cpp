@@ -479,8 +479,9 @@ void CClient::Login() {
 	
 	char aAddrStr[NETADDR_MAXSTRSIZE];
 	net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
-	dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
-	
+	#ifdef CONF_DEBUG
+		dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
+	#endif
 	m_NetClient.Send(&Packet);
 }
 const char *CClient::LatestVersion()
@@ -561,8 +562,12 @@ void CClient::Connect(const char *pAddress)
 	Disconnect();
 
 	str_copy(m_aServerAddressStr, pAddress, sizeof(m_aServerAddressStr));
-
-	str_format(aBuf, sizeof(aBuf), "connecting to '%s'", m_aServerAddressStr);
+	
+	#ifdef CONF_DEBUG
+		str_format(aBuf, sizeof(aBuf), "connecting to '%s'", m_aServerAddressStr);
+	#else
+		str_format(aBuf, sizeof(aBuf), "connecting to server", m_aServerAddressStr);
+	#endif
 	m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "client", aBuf);
 
 	ServerInfoRequest();
@@ -570,7 +575,12 @@ void CClient::Connect(const char *pAddress)
 	if(net_host_lookup(m_aServerAddressStr, &m_ServerAddress, m_NetClient.NetType()) != 0)
 	{
 		char aBufMsg[256];
-		str_format(aBufMsg, sizeof(aBufMsg), "could not find the address of %s, connecting to localhost", aBuf);
+		#ifdef CONF_DEBUG
+			str_format(aBufMsg, sizeof(aBufMsg), "could not find the address of %s, connecting to localhost", aBuf);
+		#else
+			str_format(aBufMsg, sizeof(aBufMsg), "could not find the address, connecting to localhost");
+		#endif
+		
 		m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "client", aBufMsg);
 		net_host_lookup("localhost", &m_ServerAddress, m_NetClient.NetType());
 	}

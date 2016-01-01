@@ -45,7 +45,6 @@ inline void UnpackNetAddress(CUnpacker *pUnpacker, NETADDR *pAddress) {
 		pAddress->ip[i+3] = (unsigned char)(combined&0xFF);		
 	}
 	int port = pUnpacker->GetInt();
-	dbg_msg("packer", "unpacked %d", port);
 	pAddress->port = port;
 	pAddress->type = pUnpacker->GetInt();	
 }
@@ -56,7 +55,6 @@ inline void PackNetAddress(CPacker *pPacker, const NETADDR *pAddress) {
 		pPacker->AddInt(combined);
 	}
 	int port = pAddress->port;
-	dbg_msg("packer", "packed %d", port);
 	pPacker->AddInt(pAddress->port);
 	pPacker->AddInt(pAddress->type);
 }
@@ -66,7 +64,6 @@ inline void strtok_array(char * str, const char * delimiters, array<const char*>
 	pch = strtok (str, delimiters);
 	while (pch != NULL)
 	{
-		dbg_msg("test", "part: %s ", pch);
 		arr.add(pch);
 		pch = strtok (NULL, delimiters);
 	}
