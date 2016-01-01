@@ -179,9 +179,7 @@ class CClient : public IClient, public CDemoPlayer::IListner
 	volatile int m_GfxState;
 	static void GraphicsThreadProxy(void *pThis) { ((CClient*)pThis)->GraphicsThread(); }
 	void GraphicsThread();
-	
-	//account
-	int m_AccountStatus;
+
 public:
 	IEngine *Engine() { return m_pEngine; }
 	IEngineGraphics *Graphics() { return m_pGraphics; }
@@ -299,6 +297,9 @@ public:
 	static void Con_Login(IConsole::IResult *pResult, void *pUserData);
 	static void ConchainServerBrowserUpdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
+	
+	static void Con_AddAccountserver(IConsole::IResult *pResult, void *pUserData);
+	
 	void RegisterCommands();
 
 	const char *DemoPlayer_Play(const char *pFilename, int StorageType);
@@ -311,5 +312,14 @@ public:
 	void AutoScreenshot_Cleanup();
 
 	void ServerBrowserUpdate();
+	
+	//account
+	int m_AccountStatus;
+	array<NETADDR> m_Accountservers;
+	
+	virtual bool IsValidAccountserverAddress(const NETADDR *pAddress);
+	virtual array<NETADDR> *GetAccountservers() {
+		return &m_Accountservers;
+	};
 };
 #endif

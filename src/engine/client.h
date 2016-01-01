@@ -3,6 +3,7 @@
 #ifndef ENGINE_CLIENT_H
 #define ENGINE_CLIENT_H
 #include "kernel.h"
+#include <base/tl/array.h>
 
 #include "message.h"
 
@@ -139,6 +140,9 @@ public:
 	
 	virtual void Login() = 0;
 	virtual int AccountStatus() = 0;
+	
+	virtual bool IsValidAccountserverAddress(const NETADDR *pAddress) = 0;
+	virtual array<NETADDR> *GetAccountservers() = 0;
 };
 
 class IGameClient : public IInterface

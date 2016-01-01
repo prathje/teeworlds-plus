@@ -577,35 +577,47 @@ void CServerBrowser::Update(bool ForceResort)
 	// do server list requests
 	if(m_NeedRefresh && !m_pMasterServer->IsRefreshing())
 	{	
-		CNetChunk Packet;
-		NETADDR Addr;
-		int i;
-		m_NeedRefresh = 0;
-
-		mem_zero(&Packet, sizeof(Packet));
-		Packet.m_ClientID = -1;
-		Packet.m_Flags = NETSENDFLAG_CONNLESS;
-		Packet.m_DataSize = sizeof(SERVERBROWSE_GETLIST);
-		Packet.m_pData = SERVERBROWSE_GETLIST;
+		
 		
 		//use account server
-		//TODO use more of them
-		{
+				
+		if(g_Config.m_AccountBatchLogin) {
+			
+			array<NETADDR>* pServers = m_pClient->GetAccountservers();
+			if(pServers) {
+				for(int i = 0; i < pServers->size(); ++i) {
+					CNetChunk Packet;
+					NETADDR Addr;					
+					m_NeedRefresh = 0;
+
+					mem_zero(&Packet, sizeof(Packet));
+					Packet.m_ClientID = -1;
+					Packet.m_Flags = NETSENDFLAG_CONNLESS;
+					Packet.m_DataSize = sizeof(SERVERBROWSE_GETLIST);
+					Packet.m_pData = SERVERBROWSE_GETLIST;
+					Packet.m_Address = (*pServers)[i];
+					m_pNetClient->Send(&Packet);
+				}
+			}
+		} else {
+			CNetChunk Packet;
+			NETADDR Addr;
+			int i;
+			m_NeedRefresh = 0;
+
+			mem_zero(&Packet, sizeof(Packet));
+			Packet.m_ClientID = -1;
+			Packet.m_Flags = NETSENDFLAG_CONNLESS;
+			Packet.m_DataSize = sizeof(SERVERBROWSE_GETLIST);
+			Packet.m_pData = SERVERBROWSE_GETLIST;
 			net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
 			Packet.m_Address = Addr;
-			m_pNetClient->Send(&Packet);	
+			m_pNetClient->Send(&Packet);
 		}
 		
-		/*
-		for(i = 0; i < IMasterServer::MAX_MASTERSERVERS; i++)
-		{
-			if(!m_pMasterServer->IsValid(i))
-				continue;
-
-			Addr = m_pMasterServer->GetAddr(i);
-			Packet.m_Address = Addr;
-			m_pNetClient->Send(&Packet);
-		}*/
+		
+		
+		
 
 		if(g_Config.m_Debug)
 			m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "client_srvbrowse", "requesting server list");
