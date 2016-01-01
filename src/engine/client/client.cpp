@@ -452,16 +452,25 @@ void CClient::SendInput()
 	SendMsgEx(&Msg, MSGFLAG_FLUSH);
 }
 
-//Account Login
-void CClient::Login() {
-	static const char* s_AccSrv[] = {
-		"127.0.0.1:8302"
-	};
-	
+
+bool CClient::IsValidAccountserverAddress(const NETADDR *pAddress) {
 	if (g_Config.m_AccountBatchLogin) {
-		for(int i = 0; i < sizeof(s_AccSrv)/sizeof(const char *); ++i) {		
-			NETADDR Addr;
-			net_addr_from_str(&Addr, s_AccSrv[i]);
+		for(int i = 0; i < m_Accountservers.size(); ++i) {
+			if(net_addr_comp(&m_Accountservers[i], pAddress) == 0)
+				return true;
+		}
+		return false;
+	} else {
+		NETADDR acaddr;
+		net_addr_from_str(&acaddr, g_Config.m_AccountserverAddress);
+		return net_addr_comp(&acaddr, pAddress) == 0;
+	}	
+}
+
+//Account Login
+void CClient::Login() {	
+	if (g_Config.m_AccountBatchLogin) {
+		for(int i = 0; i < m_Accountservers.size(); ++i) {
 			
 			//prepare packet
 			CPacker packer;
@@ -476,7 +485,7 @@ void CClient::Login() {
 			Packet.m_ClientID = -1;
 			Packet.m_Flags = NETSENDFLAG_CONNLESS;
 			Packet.m_pData = packer.Data();
-			Packet.m_Address = Addr;
+			Packet.m_Address =  m_Accountservers[i];
 			
 			Packet.m_DataSize = packer.Size();
 
@@ -1000,31 +1009,7 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 	if(pPacket->m_DataSize >= (int)sizeof(SERVERBROWSE_LIST) &&
 		mem_comp(pPacket->m_pData, SERVERBROWSE_LIST, sizeof(SERVERBROWSE_LIST)) == 0)
 	{
-		// check for valid master server address
-		bool Valid = false;
-		
-		//account
-		//TODO: use multiple accountserver addresses
-		NETADDR Addr;
-		net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
-		if(net_addr_comp(&pPacket->m_Address, &Addr) == 0)
-		{
-			Valid = true;
-		}
-		/*
-		for(int i = 0; i < IMasterServer::MAX_MASTERSERVERS; ++i)
-		{
-			if(m_pMasterServer->IsValid(i))
-			{
-				NETADDR Addr = m_pMasterServer->GetAddr(i);
-				if(net_addr_comp(&pPacket->m_Address, &Addr) == 0)
-				{
-					Valid = true;
-					break;
-				}
-			}
-		}*/
-		if(!Valid)
+		if(!IsValidAccountserverAddress(&pPacket->m_Address))
 			return;
 
 		int Size = pPacket->m_DataSize-sizeof(SERVERBROWSE_LIST);
@@ -1113,9 +1098,8 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 	if(pPacket->m_DataSize == (int)sizeof(ACCOUNTSRV_LOGIN_RESPONSE) + 1 &&
 		mem_comp(pPacket->m_pData, ACCOUNTSRV_LOGIN_RESPONSE, sizeof(ACCOUNTSRV_LOGIN_RESPONSE)) == 0)
 	{
-		NETADDR acaddr;
-		net_addr_from_str(&acaddr, g_Config.m_AccountserverAddress);
-		if(net_addr_comp(&acaddr, &pPacket->m_Address) == 0) {
+
+		if(IsValidAccountserverAddress(&pPacket->m_Address)) {
 			unsigned char *pData = (unsigned char *)pPacket->m_pData;
 			int response = pData[sizeof(ACCOUNTSRV_LOGIN_RESPONSE)];
 			m_AccountStatus = response;
@@ -2211,6 +2195,14 @@ void CClient::Con_AddFavorite(IConsole::IResult *pResult, void *pUserData)
 		pSelf->m_ServerBrowser.AddFavorite(Addr);
 }
 
+void CClient::Con_AddAccountserver(IConsole::IResult *pResult, void *pUserData)
+{
+	CClient *pSelf = (CClient *)pUserData;
+	NETADDR Addr;
+	if(net_addr_from_str(&Addr, pResult->GetString(0)) == 0)
+		pSelf->m_Accountservers.add(Addr);
+}
+
 void CClient::Con_RemoveFavorite(IConsole::IResult *pResult, void *pUserData)
 {
 	CClient *pSelf = (CClient *)pUserData;
@@ -2396,6 +2388,9 @@ void CClient::RegisterCommands()
 	m_pConsole->Chain("br_filter_string", ConchainServerBrowserUpdate, this);
 	m_pConsole->Chain("br_filter_gametype", ConchainServerBrowserUpdate, this);
 	m_pConsole->Chain("br_filter_serveraddress", ConchainServerBrowserUpdate, this);
+	
+	//used for accountserver
+	m_pConsole->Register("add_accountserver", "s", CFGFLAG_CLIENT, Con_AddAccountserver, this, "Add a server to the batch list");
 }
 
 static CClient *CreateClient()
