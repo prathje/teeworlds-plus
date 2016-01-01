@@ -159,7 +159,7 @@ public:
 	//static NETADDR4 master_server;
 
 	//account
-	bool m_CurrentUseAccounts;
+	int m_CurrentUseAccounts;
 	char m_aCurrentMap[64];
 	unsigned m_CurrentMapCrc;
 	unsigned char *m_pCurrentMapData;

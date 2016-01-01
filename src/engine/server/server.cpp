@@ -1503,7 +1503,7 @@ int CServer::Run()
 			}
 
 			//account
-			if(g_Config.m_SvUseAccounts != m_CurrentUseAccounts)
+			if((g_Config.m_SvUseAccounts && !m_CurrentUseAccounts) || (!g_Config.m_SvUseAccounts && m_CurrentUseAccounts))
 			{
 				m_CurrentUseAccounts = g_Config.m_SvUseAccounts;
 				for(int i = 0; i < MAX_CLIENTS; ++i)
