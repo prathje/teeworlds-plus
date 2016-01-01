@@ -454,36 +454,73 @@ void CClient::SendInput()
 
 //Account Login
 void CClient::Login() {
-
-	NETADDR Addr;
-	net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+	static const char* s_AccSrv[] = {
+		"127.0.0.1:8302"
+	};
 	
-	//prepare packet
-	CPacker packer;
-	packer.Reset();
-	packer.AddRaw(ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN));
-	PackNetAddress(&packer, &m_ServerAddress);
-	packer.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
-	packer.AddString(g_Config.m_AccountPassword, MAX_ACCOUNT_PASSWORD_LENGTH);
+	if (g_Config.m_AccountBatchLogin) {
+		for(int i = 0; i < sizeof(s_AccSrv)/sizeof(const char *); ++i) {		
+			NETADDR Addr;
+			net_addr_from_str(&Addr, s_AccSrv[i]);
+			
+			//prepare packet
+			CPacker packer;
+			packer.Reset();
+			packer.AddRaw(ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN));
+			PackNetAddress(&packer, &m_ServerAddress);
+			packer.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
+			packer.AddString(g_Config.m_AccountPassword, MAX_ACCOUNT_PASSWORD_LENGTH);
 
-	CNetChunk Packet;
-	mem_zero(&Packet, sizeof(Packet));
-	Packet.m_ClientID = -1;
-	Packet.m_Flags = NETSENDFLAG_CONNLESS;
-	Packet.m_pData = packer.Data();
-	Packet.m_Address = Addr;
-	
-	Packet.m_DataSize = packer.Size();
+			CNetChunk Packet;
+			mem_zero(&Packet, sizeof(Packet));
+			Packet.m_ClientID = -1;
+			Packet.m_Flags = NETSENDFLAG_CONNLESS;
+			Packet.m_pData = packer.Data();
+			Packet.m_Address = Addr;
+			
+			Packet.m_DataSize = packer.Size();
 
-	EncodeData(((char*)Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN), Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN));
-	
-	char aAddrStr[NETADDR_MAXSTRSIZE];
-	net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
-	#ifdef CONF_DEBUG
-		dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
-	#endif
-	m_NetClient.Send(&Packet);
+			EncodeData(((char*)Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN), Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN));
+			
+			char aAddrStr[NETADDR_MAXSTRSIZE];
+			net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
+			#ifdef CONF_DEBUG
+				dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
+			#endif
+			m_NetClient.Send(&Packet);
+		}		
+	} else {	
+		NETADDR Addr;
+		net_addr_from_str(&Addr, g_Config.m_AccountserverAddress);
+		
+		//prepare packet
+		CPacker packer;
+		packer.Reset();
+		packer.AddRaw(ACCOUNTSRV_LOGIN, sizeof(ACCOUNTSRV_LOGIN));
+		PackNetAddress(&packer, &m_ServerAddress);
+		packer.AddString(g_Config.m_PlayerName, MAX_ACCOUNT_NAME_LENGTH);
+		packer.AddString(g_Config.m_AccountPassword, MAX_ACCOUNT_PASSWORD_LENGTH);
+
+		CNetChunk Packet;
+		mem_zero(&Packet, sizeof(Packet));
+		Packet.m_ClientID = -1;
+		Packet.m_Flags = NETSENDFLAG_CONNLESS;
+		Packet.m_pData = packer.Data();
+		Packet.m_Address = Addr;
+		
+		Packet.m_DataSize = packer.Size();
+
+		EncodeData(((char*)Packet.m_pData)+sizeof(ACCOUNTSRV_LOGIN), Packet.m_DataSize-sizeof(ACCOUNTSRV_LOGIN));
+		
+		char aAddrStr[NETADDR_MAXSTRSIZE];
+		net_addr_str(&Packet.m_Address, aAddrStr, sizeof(aAddrStr), true);
+		#ifdef CONF_DEBUG
+			dbg_msg("Account", "Trying to login: %s %d", aAddrStr, Packet.m_DataSize);
+		#endif
+		m_NetClient.Send(&Packet);
+	}
 }
+
 const char *CClient::LatestVersion()
 {
 	return m_aVersionStr;
