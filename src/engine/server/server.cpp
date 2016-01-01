@@ -1215,7 +1215,6 @@ void CServer::PumpNetwork()
 						dbg_msg("Account", "%s got a response: %d", pAccountName, response);
 						int ClientID = -1;
 						for(int c = 0; c < MAX_CLIENTS; ++c) {
-							dbg_msg("Comparing  %s with %s, %d, %d" , m_aClients[c].m_aAccountName, pAccountName, str_length(m_aClients[c].m_aAccountName), str_length(pAccountName) );
 							if(str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
 								dbg_msg("found client with name %s %d", pAccountName, c);
 								if(m_aClients[c].m_State >= CClient::STATE_READY) {
