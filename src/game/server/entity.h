@@ -68,7 +68,12 @@ protected:
 	int m_ID;
 	int m_ObjType;
 	//we need to change this if we modify MAX_CLIENTS
-	int16_t m_AffectedCharacters;
+	#ifdef CONF_FAMILY_WINDOWS
+		short m_AffectedCharacters;
+	#else
+		int16_t m_AffectedCharacters;
+	#endif
+	
 public:
 	CEntity(CGameWorld *pGameWorld, int Objtype);
 	virtual ~CEntity();

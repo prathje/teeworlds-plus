@@ -852,15 +852,31 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 
 		if((From == m_pPlayer->GetCID()) || (Weapon == WEAPON_GAME))
 		{
-			if(Weapon == WEAPON_GRENADE)
+			if(Weapon == WEAPON_GRENADE) {
 				m_pPlayer->m_Stats.m_Rocketjumps++;
+				if(g_Config.m_SvGrenadeSmartRegen && g_Config.m_SvGrenadeAmmo != -1 && m_aWeapons[WEAPON_GRENADE].m_Got) {
+					m_aWeapons[WEAPON_GRENADE].m_Ammo = min(m_aWeapons[WEAPON_GRENADE].m_Ammo + 1, g_Config.m_SvGrenadeAmmo);
+				}
+			}
+				
 			return false;
 		}
 		else if(g_Config.m_SvHookKill && (!GameWorld()->m_Core.m_apCharacters[From] || GameWorld()->m_Core.m_apCharacters[From]->m_HookedPlayer != m_pPlayer->GetCID()))
 			return false;	
 		if(GameServer()->m_pController->IsIFreeze() && Frozen())
 			return false;
-
+		
+		if(Weapon == WEAPON_GRENADE && GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_GCTF) {
+			if(g_Config.m_SvGrenadeSmartRegen && g_Config.m_SvGrenadeAmmo != -1) {
+				CPlayer *pPlayer = GameServer()->m_apPlayers[From];
+				if (pPlayer) {
+					CCharacter *pChr = pPlayer->GetCharacter();
+					if(pChr && pChr->m_aWeapons[WEAPON_GRENADE].m_Got) {
+						m_aWeapons[WEAPON_GRENADE].m_Ammo = min(m_aWeapons[WEAPON_GRENADE].m_Ammo + 1, g_Config.m_SvGrenadeAmmo);
+					}
+				}
+			}
+		}
 		m_Health = 0;
 		m_Armor = 0;
 	}
