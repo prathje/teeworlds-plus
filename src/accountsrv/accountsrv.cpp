@@ -18,7 +18,7 @@
 
 
 enum {
-	EXPIRE_TIME = 90,
+	EXPIRE_TIME = 5,
 	RELOAD_TIME = 60,
 	MTU = 1400,
 	MAX_SERVERS_PER_PACKET=75,
@@ -538,7 +538,7 @@ void UpdateAccounts() {
 	int64 Freq = time_freq();
 	
 	for(int i = 0; i < m_lAccounts.size(); ++i) {
-		if(Now > m_lAccounts[i].m_LastActive+ (int64)EXPIRE_TIME*Freq) {
+		if(m_lAccounts[i].m_Valid && Now > m_lAccounts[i].m_LastActive+ ((int64)EXPIRE_TIME)*Freq) {
 			m_lAccounts[i].m_Valid = false;
 		}	
 	}
