@@ -1214,35 +1214,34 @@ void CServer::PumpNetwork()
 						}
 						dbg_msg("Account", "%s got a response: %d", pAccountName, response);
 						int ClientID = -1;
+						
 						for(int c = 0; c < MAX_CLIENTS; ++c) {
-							if(str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
-								dbg_msg("found client with name %s %d", pAccountName, c);
-								if(m_aClients[c].m_State >= CClient::STATE_READY) {
-									//kick this player (logged in from another location)							
-									m_NetServer.Drop(c, str_length(m_aClients[c].m_aAccountName) > 0 ? "You logged in from another location" : "A player with the same name logged in");
-								} else if(m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION) {								
-									if(net_addr_comp(&clientAddr, m_NetServer.ClientAddr(c)) == 0 || (g_Config.m_SvUseAccounts == 2 && net_addr_comp_no_port(&clientAddr, m_NetServer.ClientAddr(c)) == 0))  {
-										if(ClientID == -1) {
-											ClientID = c;
-										} else {
-											m_NetServer.Drop(c, "You logged in from another location");							
-										}							
-									}else {
-										dbg_msg("client is not on this server %s", pAccountName);
-									}							
-								}							
+							if(m_aClients[c].m_State == CClient::STATE_ACCOUNT_VERIFICATION && str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
+								ClientID = c;
+								break;
 							}
 						}
+						
 						if(ClientID != -1) {
-							if(response == ACCOUNT_STATUS_OK) {
-								m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
-								SendMap(ClientID);
-							} else {
-								m_NetServer.Drop(ClientID, "Your account could not be verified");				
+							if(response != ACCOUNT_STATUS_OK) {							
+								m_NetServer.Drop(ClientID, "Your account could not be verified");
+								return;
 							}
 						} else {
 							dbg_msg("Account", "player with accountname %s could not be found", pAccountName);
+							return;
 						}
+						
+						for(int c = 0; c < MAX_CLIENTS; ++c) {
+							if (c == ClientID)
+								continue;
+							
+							if(str_comp_nocase(m_aClients[c].m_aAccountName, pAccountName) == 0) {
+								m_NetServer.Drop(c, "You logged in from another location");								
+							}
+						}						
+						m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
+						SendMap(ClientID);
 					} else {
 						Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "Account", "Received a response message from unknown source!");
 					}
