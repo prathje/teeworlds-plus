@@ -76,8 +76,7 @@ bool CEntity::IsAffected(int ClientID) {
 	if (!g_Config.m_SvSprayprotection) {
 		return true;
 	}
-	if (ClientID < 0 || ClientID >= sizeof(m_AffectedCharacters)) {
-		dbg_msg("MAX_CLIENTS Error", "You have to update m_AffectedCharacters to your MAX_CLIENTS size");
+	if (ClientID < 0 || ClientID > MAX_CLIENTS) {
 		return true;
 	} else {
 		return (m_AffectedCharacters>>ClientID)&0x1;
@@ -85,7 +84,7 @@ bool CEntity::IsAffected(int ClientID) {
 }
 
 void CEntity::SetAffected(int ClientID, bool Affected) {
-	if (ClientID >= 0 && ClientID < sizeof(m_AffectedCharacters)) {
+	if (ClientID >= 0 && ClientID < MAX_CLIENTS) {
 		if (Affected) {
 			m_AffectedCharacters |= (1<<ClientID);
 		} else {

@@ -87,7 +87,7 @@ void CGameControllerCTF::DoWincheck()
 			}
 			else
 			{
-				if(m_aTeamscore[TEAM_RED] != m_aTeamscore[TEAM_BLUE])
+				if(m_aTeamscore[TEAM_RED]/100 != m_aTeamscore[TEAM_BLUE]/100)
 					EndRound();
 				else
 					m_SuddenDeath = 1;
