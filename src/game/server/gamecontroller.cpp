@@ -815,6 +815,36 @@ int IGameController::ClampTeam(int Team)
 	return 0;
 }
 
+void IGameController:LogIP(int ClientId) {
+	if(g_Config.m_SvStatsFile[0] && g_Config.m_SvStatsOutputlevel)
+	{
+		char aBuf[1024];
+		FILE* pFile = fopen(g_Config.m_SvIPLog, "a");
+
+		if(!pFile)
+		{
+			str_format(aBuf, sizeof(aBuf), "Failed to open %s to save stats", g_Config.m_SvStatsFile);
+			GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "stats", aBuf);
+			return;
+		}
+		
+		if(!GameServer()->m_apPlayers[i])
+			return;
+		
+		CPlayer* pP = GameServer()->m_apPlayers[i];
+		char TimeStr[128];
+		
+		time_t Now_t = time(0);
+
+		strftime(TimeStr, sizeof(TimeStr), "%Y-%m-%d %X", localtime(&Now_t));
+		
+		str_format(aBuf, sizeof(aBuf), "Time: %s\t|Server-Name: %s\t|Client-IP: %s\t|Client-Name: %s\n", TimeStr, g_Config.m_SvName, Server()->ClientName(i));
+		fputs(aBuf, pFile);
+		
+		fclose(pFile);
+	}
+	
+}
 void IGameController::SaveStats()
 {
 	if(g_Config.m_SvStatsFile[0] && g_Config.m_SvStatsOutputlevel)
@@ -849,13 +879,14 @@ void IGameController::SaveStats()
 
 			char aaTemp[3][512] = {"", "", ""};
 			// Outputlevel 1
-			str_format(aaTemp[0], sizeof(aaTemp[0]), "ID: %2d\t| Name: %-15.15s| Team: %-10.10s| Score: %-6.1d| Kills: %-6.1d| Deaths: %-6.1d| Ratio: %-6.2lf",
-					pP->GetCID(), Server()->ClientName(i), GetTeamName(pP->GetTeam()), pP->m_Score, pP->m_Stats.m_Kills, pP->m_Stats.m_Deaths, (pP->m_Stats.m_Deaths > 0) ? ((float)pP->m_Stats.m_Kills / (float)pP->m_Stats.m_Deaths) : 0
+			str_format(aaTemp[0], sizeof(aaTemp[0]), "ID: %2d\t| Name: %-15.15s| Team: %-10.10s| Score: %-6.1d| Kills: %-6.1d| Deaths: %-6.1d| Ratio: %-6.2lf | Hit/Shots (without RJ): %-6.1d",
+					pP->GetCID(), Server()->ClientName(i), GetTeamName(pP->GetTeam()), pP->m_Score, pP->m_Stats.m_Kills, pP->m_Stats.m_Deaths, (pP->m_Stats.m_Deaths > 0) ? ((float)pP->m_Stats.m_Kills / (float)pP->m_Stats.m_Deaths) : 0,
+					(pP->m_Stats.m_TotalShots-pP->m_Stats.m_Rocketjumps > 0) ? ((float) pP->m_Stats.m_Kills / (float) ( (IsInstagib() ? pP->m_Stats.m_TotalShots-pP->m_Stats.m_Rocketjumps : pP->m_Stats.m_TotalShots))) : 0
 					);
 			//Outputlevel 2
 			if(g_Config.m_SvStatsOutputlevel > 1)
-				str_format(aaTemp[1], sizeof(aaTemp[1]), "| Hits: %-6.1d| Total Shots: %-6.1d| Captures: %-6.1d| Fastest Capture: %6.2lf",
-					pP->m_Stats.m_Hits, pP->m_Stats.m_TotalShots, (m_GameFlags&GAMEFLAG_FLAGS) ? pP->m_Stats.m_Captures : -1, ((m_GameFlags&GAMEFLAG_FLAGS) || pP->m_Stats.m_FastestCapture < 0.1) ? pP->m_Stats.m_FastestCapture : -1
+				str_format(aaTemp[1], sizeof(aaTemp[1]), "| Hits: %-6.1d| Total Shots: %-6.1d| Rocket Jumps: %-6.1d| Captures: %-6.1d| Fastest Capture: %6.2lf",
+					pP->m_Stats.m_Hits, pP->m_Stats.m_TotalShots, pP->m_Stats.m_Rocketjumps, (m_GameFlags&GAMEFLAG_FLAGS) ? pP->m_Stats.m_Captures : -1, ((m_GameFlags&GAMEFLAG_FLAGS) || pP->m_Stats.m_FastestCapture < 0.1) ? pP->m_Stats.m_FastestCapture : -1
 					);
 			//Outputlevel 3
 			if(g_Config.m_SvStatsOutputlevel > 2)
