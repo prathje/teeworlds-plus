@@ -814,7 +814,8 @@ int IGameController::ClampTeam(int Team)
 		return Team&1;
 	return 0;
 }
-
+/*
+//TODO: implement me?
 void IGameController:LogIP(int ClientId) {
 	if(g_Config.m_SvStatsFile[0] && g_Config.m_SvStatsOutputlevel)
 	{
@@ -844,7 +845,7 @@ void IGameController:LogIP(int ClientId) {
 		fclose(pFile);
 	}
 	
-}
+}*/
 void IGameController::SaveStats()
 {
 	if(g_Config.m_SvStatsFile[0] && g_Config.m_SvStatsOutputlevel)
