@@ -66,6 +66,11 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 			m_ActiveWeapon = WEAPON_GRENADE;
 			m_LastWeapon = WEAPON_GRENADE;
 		}
+		else if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF)
+		{
+			m_ActiveWeapon = WEAPON_HAMMER;
+			m_LastWeapon = WEAPON_HAMMER;
+		}
 		else
 		{
 			m_ActiveWeapon = WEAPON_RIFLE;
