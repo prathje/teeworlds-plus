@@ -358,13 +358,16 @@ void CCharacter::FireWeapon()
 				Hits++;
 			}
 			
-			
-			if(GameServer()->Collision()->GetCollisionAt(ProjStartPos.x, ProjStartPos.y)&CCollision::COLFLAG_SOLID) {
-				GameServer()->CreateExplosion(ProjStartPos, m_pPlayer->GetCID(), WEAPON_GAME, false, 0);
+			if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF) {
+				
+				vec2 ExplosionPos = m_Pos+Direction*m_ProximityRadius*1.5f;
+				
+				if(GameServer()->Collision()->GetCollisionAt(ExplosionPos.x, ProjStartPos.y)&CCollision::COLFLAG_SOLID) {
+					GameServer()->CreateExplosion(ExplosionPos, m_pPlayer->GetCID(), WEAPON_GAME, false, 0);
+				}
+				
+				m_pPlayer->m_Stats.m_TotalShots++;
 			}
-			
-			m_pPlayer->m_Stats.m_TotalShots++;
-			
 			// if we Hit anything, we have to wait for the reload
 			if(Hits)
 				m_ReloadTimer = Server()->TickSpeed()/3;
@@ -863,9 +866,6 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 	{
 		if((GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_GCTF) && g_Config.m_SvGrenadeMinDamage > Dmg)
 			return false;
-		if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF && Weapon == WEAPON_GAME) {
-			return false;
-		}
 
 		if((From == m_pPlayer->GetCID()) || (Weapon == WEAPON_GAME))
 		{
@@ -879,7 +879,12 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 			return false;
 		}
 		else if(g_Config.m_SvHookKill && (!GameWorld()->m_Core.m_apCharacters[From] || GameWorld()->m_Core.m_apCharacters[From]->m_HookedPlayer != m_pPlayer->GetCID()))
-			return false;	
+			return false;
+
+		if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF && Weapon == WEAPON_GAME) {
+			return false;
+		}
+		
 		if(GameServer()->m_pController->IsIFreeze() && Frozen())
 			return false;
 		
