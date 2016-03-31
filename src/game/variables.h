@@ -186,4 +186,5 @@ MACRO_CONFIG_INT(SvNetworkClippingDist, sv_net_clipping_dist, 1100, 0, 10000, CF
 MACRO_CONFIG_INT(SvShowStats, sv_show_stats, 0, 0, 1, CFGFLAG_SERVER, "show the stats of each playing player at game ending")
 MACRO_CONFIG_INT(SvCleanName, sv_clean_name, 0, 0, 1, CFGFLAG_SERVER, "clean names from utf-8 special characters")
 
+MACRO_CONFIG_INT(SvHammerExplosionRadius, sv_hammer_explosion_radius, 20, 0, 1000, CFGFLAG_SERVER, "Set the hammer explosion radius")
 #endif

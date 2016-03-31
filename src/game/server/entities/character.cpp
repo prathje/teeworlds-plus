@@ -360,10 +360,11 @@ void CCharacter::FireWeapon()
 			
 			if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF) {
 				
-				vec2 ExplosionPos = m_Pos+Direction*m_ProximityRadius*1.5f;
-				
-				if(GameServer()->Collision()->GetCollisionAt(ExplosionPos.x, ProjStartPos.y)&CCollision::COLFLAG_SOLID) {
-					GameServer()->CreateExplosion(ExplosionPos, m_pPlayer->GetCID(), WEAPON_GAME, false, 0);
+				if(g_Config.m_SvHammerExplosionRadius > 0) {
+					vec2 ExplosionPos = m_Pos+Direction*m_ProximityRadius*((float)g_Config.m_SvHammerExplosionRadius)*0.1f;
+					if(GameServer()->Collision()->GetCollisionAt(ExplosionPos.x, ProjStartPos.y)&CCollision::COLFLAG_SOLID) {
+						GameServer()->CreateExplosion(ExplosionPos, m_pPlayer->GetCID(), WEAPON_GAME, false, 0);
+					}
 				}
 				
 				m_pPlayer->m_Stats.m_TotalShots++;
@@ -869,11 +870,13 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 
 		if((From == m_pPlayer->GetCID()) || (Weapon == WEAPON_GAME))
 		{
-			if(Weapon == WEAPON_GRENADE || Weapon == WEAPON_HAMMER) {
+			if(Weapon == WEAPON_GRENADE) {
 				m_pPlayer->m_Stats.m_Rocketjumps++;
 				if(g_Config.m_SvGrenadeSmartRegen && g_Config.m_SvGrenadeAmmo != -1 && m_aWeapons[WEAPON_GRENADE].m_Got) {
 					m_aWeapons[WEAPON_GRENADE].m_Ammo = min(m_aWeapons[WEAPON_GRENADE].m_Ammo + 1, g_Config.m_SvGrenadeAmmo);
 				}
+			} else if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF && Weapon == WEAPON_GAME) {
+				m_pPlayer->m_Stats.m_Rocketjumps++;
 			}
 				
 			return false;
