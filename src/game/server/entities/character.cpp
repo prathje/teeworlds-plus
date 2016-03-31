@@ -361,8 +361,9 @@ void CCharacter::FireWeapon()
 			if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF) {
 				
 				if(g_Config.m_SvHammerExplosionRadius > 0) {
-					vec2 ExplosionPos = m_Pos+Direction*m_ProximityRadius*((float)g_Config.m_SvHammerExplosionRadius)*0.1f;
-					if(GameServer()->Collision()->GetCollisionAt(ExplosionPos.x, ProjStartPos.y)&CCollision::COLFLAG_SOLID) {
+					vec2 ExplosionDir = m_Pos+Direction*m_ProximityRadius*((float)g_Config.m_SvHammerExplosionRadius)*0.1f;
+					vec2 ExplosionPos;
+					if(GameServer()->Collision()->IntersectLine(m_Pos, ExplosionDir, 0, &ExplosionPos)) {
 						GameServer()->CreateExplosion(ExplosionPos, m_pPlayer->GetCID(), WEAPON_GAME, false, 0);
 					}
 				}
