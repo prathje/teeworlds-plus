@@ -149,7 +149,8 @@ public:
 		GAMETYPE_INSTAGIB = 1<<0,
 		GAMETYPE_VANILLA = 1<<1,
 		GAMETYPE_GCTF = 1<<2,
-		GAMETYPE_IFREEZE = 1<<3
+		GAMETYPE_IFREEZE = 1<<3,
+		GAMETYPE_HCTF = 1<<4,
 	};
 	int m_Flags;
 

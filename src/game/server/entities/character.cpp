@@ -352,7 +352,14 @@ void CCharacter::FireWeapon()
 					m_pPlayer->GetCID(), m_ActiveWeapon);
 				Hits++;
 			}
-
+			
+			
+			if(GameServer()->Collision()->GetCollisionAt(ProjStartPos.x, ProjStartPos.y)&CCollision::COLFLAG_SOLID) {
+				GameServer()->CreateExplosion(ProjStartPos, m_pPlayer->GetCID(), WEAPON_GAME, false, 0);
+			}
+			
+			m_pPlayer->m_Stats.m_TotalShots++;
+			
 			// if we Hit anything, we have to wait for the reload
 			if(Hits)
 				m_ReloadTimer = Server()->TickSpeed()/3;
@@ -836,7 +843,9 @@ void CCharacter::Die(int Killer, int Weapon)
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 {
-	m_Core.m_Vel += Force;
+	if(!(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF) || From == m_pPlayer->GetCID()) {
+		m_Core.m_Vel += Force;
+	}
 
 	if(GameServer()->m_pController->IsFriendlyFire(m_pPlayer->GetCID(), From) && !g_Config.m_SvTeamdamage)
 		return false;
@@ -849,10 +858,13 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 	{
 		if((GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_GCTF) && g_Config.m_SvGrenadeMinDamage > Dmg)
 			return false;
+		if(GameServer()->m_pController->m_Flags&IGameController::GAMETYPE_HCTF && Weapon == WEAPON_GAME) {
+			return false;
+		}
 
 		if((From == m_pPlayer->GetCID()) || (Weapon == WEAPON_GAME))
 		{
-			if(Weapon == WEAPON_GRENADE) {
+			if(Weapon == WEAPON_GRENADE || Weapon == WEAPON_HAMMER) {
 				m_pPlayer->m_Stats.m_Rocketjumps++;
 				if(g_Config.m_SvGrenadeSmartRegen && g_Config.m_SvGrenadeAmmo != -1 && m_aWeapons[WEAPON_GRENADE].m_Got) {
 					m_aWeapons[WEAPON_GRENADE].m_Ammo = min(m_aWeapons[WEAPON_GRENADE].m_Ammo + 1, g_Config.m_SvGrenadeAmmo);
@@ -877,6 +889,7 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 				}
 			}
 		}
+		
 		m_Health = 0;
 		m_Armor = 0;
 	}

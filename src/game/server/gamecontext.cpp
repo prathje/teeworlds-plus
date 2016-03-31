@@ -16,6 +16,7 @@
 #include "gamemodes/mod.h"
 #include "gamemodes/grenade.h"
 #include "gamemodes/ifreeze.h"
+#include "gamemodes/hammer.h"
 
 enum
 {
@@ -1933,8 +1934,19 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 	// reset everything here
 	//world = new GAMEWORLD;
 	//players = new CPlayer[MAX_CLIENTS];
-
+	
+	if(!str_comp_nocase(g_Config.m_SvGametype, "hdm") || !str_comp_nocase(g_Config.m_SvGametype, "hdm+"))			// gDM
+		m_pController = new CGameControllerHDM(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
+	else if(!str_comp_nocase(g_Config.m_SvGametype, "htdm") || !str_comp_nocase(g_Config.m_SvGametype, "htdm+"))		// gTDM
+		m_pController = new CGameControllerHTDM(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
+	else
+		m_pController = new CGameControllerHCTF(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
+	
 	// select gametype
+	/*
+	
+	TODO: enable me again
+	
 	if(str_comp_nocase(g_Config.m_SvGametype, "mod") == 0)
 		m_pController = new CGameControllerMOD(this);
 	else if(str_comp_nocase(g_Config.m_SvGametype, "ctf") == 0 || !str_comp_nocase(g_Config.m_SvGametype, "ctf+"))		// CTF
@@ -1956,7 +1968,7 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 	else if(!str_comp_nocase(g_Config.m_SvGametype, "ifreeze") || !str_comp_nocase(g_Config.m_SvGametype, "ifreeze+"))	// iFreeze
 		m_pController = new CGameControllerIFreeze(this, IGameController::GAMETYPE_IFREEZE|IGameController::GAMETYPE_INSTAGIB);
 	else
-		m_pController = new CGameControllerDM(this, IGameController::GAMETYPE_VANILLA);
+		m_pController = new CGameControllerDM(this, IGameController::GAMETYPE_VANILLA);*/
 
 	// setup core world
 	//for(int i = 0; i < MAX_CLIENTS; i++)
@@ -1965,8 +1977,6 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 	// create all entities from the game layer
 	CMapItemLayerTilemap *pTileMap = m_Layers.GameLayer();
 	CTile *pTiles = (CTile *)Kernel()->RequestInterface<IMap>()->GetData(pTileMap->m_Data);
-
-
 
 
 	/*
@@ -2069,11 +2079,8 @@ void CGameContext::ShowStats() {
 
 			for (int i = 0; i < 5; i++)
 				SendChat(-1, CGameContext::CHAT_ALL, aaBuf[i]);
-		
 		}
-			
 	}
-	
 }
 
 const char *CGameContext::GameType() { return m_pController && m_pController->m_pGameType ? m_pController->m_pGameType : ""; }
