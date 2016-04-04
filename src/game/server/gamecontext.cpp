@@ -1935,17 +1935,7 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 	//world = new GAMEWORLD;
 	//players = new CPlayer[MAX_CLIENTS];
 	
-	if(!str_comp_nocase(g_Config.m_SvGametype, "hdm") || !str_comp_nocase(g_Config.m_SvGametype, "hdm+"))			// gDM
-		m_pController = new CGameControllerHDM(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
-	else if(!str_comp_nocase(g_Config.m_SvGametype, "htdm") || !str_comp_nocase(g_Config.m_SvGametype, "htdm+"))		// gTDM
-		m_pController = new CGameControllerHTDM(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
-	else
-		m_pController = new CGameControllerHCTF(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
-	
 	// select gametype
-	/*
-	
-	TODO: enable me again
 	
 	if(str_comp_nocase(g_Config.m_SvGametype, "mod") == 0)
 		m_pController = new CGameControllerMOD(this);
@@ -1967,8 +1957,14 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 		m_pController = new CGameControllerGTDM(this, IGameController::GAMETYPE_GCTF|IGameController::GAMETYPE_INSTAGIB);
 	else if(!str_comp_nocase(g_Config.m_SvGametype, "ifreeze") || !str_comp_nocase(g_Config.m_SvGametype, "ifreeze+"))	// iFreeze
 		m_pController = new CGameControllerIFreeze(this, IGameController::GAMETYPE_IFREEZE|IGameController::GAMETYPE_INSTAGIB);
+	else if(!str_comp_nocase(g_Config.m_SvGametype, "hdm") || !str_comp_nocase(g_Config.m_SvGametype, "hdm+"))			// gDM
+		m_pController = new CGameControllerHDM(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
+	else if(!str_comp_nocase(g_Config.m_SvGametype, "htdm") || !str_comp_nocase(g_Config.m_SvGametype, "htdm+"))		// gTDM
+		m_pController = new CGameControllerHTDM(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
+	else if(!str_comp_nocase(g_Config.m_SvGametype, "hctf") || !str_comp_nocase(g_Config.m_SvGametype, "hctf+"))
+		m_pController = new CGameControllerHCTF(this, IGameController::GAMETYPE_HCTF|IGameController::GAMETYPE_INSTAGIB);
 	else
-		m_pController = new CGameControllerDM(this, IGameController::GAMETYPE_VANILLA);*/
+		m_pController = new CGameControllerDM(this, IGameController::GAMETYPE_VANILLA);
 
 	// setup core world
 	//for(int i = 0; i < MAX_CLIENTS; i++)
