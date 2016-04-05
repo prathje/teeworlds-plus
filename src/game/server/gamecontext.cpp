@@ -1116,6 +1116,28 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			pPlayer->m_LastKill = Server()->Tick();
 			pPlayer->KillCharacter(WEAPON_SELF);
 		}
+		else if (MsgID == 26)
+		{
+			//Support DDRace NETMSGTYPE_CL_ISDDNET
+			int Version = pUnpacker->GetInt();
+
+			if (pUnpacker->Error())
+			{
+				pPlayer->m_ClientVersion = 1;
+			}
+			else if(pPlayer->m_ClientVersion < Version)
+				pPlayer->m_ClientVersion = Version;
+
+			char aBuf[128];
+			str_format(aBuf, sizeof(aBuf), "%d using Custom Client %d", ClientID, pPlayer->m_ClientVersion);
+			
+			//tell known bot clients that they're botting and we know it
+			if (((Version >= 15 && Version < 100) || Version == 502)) {
+				pPlayer->m_BotDetected = true;
+				str_format(aBuf, sizeof(aBuf), "%d using Custom Client %d and is possibly using a bot", ClientID, pPlayer->m_ClientVersion);
+			}
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aBuf);			
+		}
 	}
 	else
 	{

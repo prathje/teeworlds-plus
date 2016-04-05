@@ -122,6 +122,9 @@ public:
 	bool m_GotAward;
 
 	bool m_FreezeOnSpawn;
+	
+	int m_ClientVersion;
+	bool m_BotDetected;
 private:
 	CCharacter *m_pCharacter;
 	CGameContext *m_pGameServer;

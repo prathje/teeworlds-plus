@@ -27,6 +27,9 @@
 
 #include <mastersrv/mastersrv.h>
 
+#include <game/server/gamecontext.h>
+#include <game/server/player.h>
+
 #include "register.h"
 #include "server.h"
 
@@ -1659,6 +1662,18 @@ void CServer::ConStatus(IConsole::IResult *pResult, void *pUser)
 										pThis->m_aClients[i].m_Authed == CServer::AUTHED_MOD ? "(Mod)" : "";
 				str_format(aBuf, sizeof(aBuf), "id=%d addr=%s name='%s' score=%d %s", i, aAddrStr,
 					pThis->m_aClients[i].m_aName, pThis->m_aClients[i].m_Score, pAuthStr);
+					
+				CPlayer *pPlayer = ((CGameContext *)(pThis->GameServer()))->m_apPlayers[i];
+				int GameVersion = pPlayer ? pPlayer->m_ClientVersion : 0;
+				int BotDetected = pPlayer ? pPlayer->m_BotDetected : 0;
+				
+				if(GameVersion || BotDetected) {
+					str_format(aBuf, sizeof(aBuf), "id=%d addr=%s name='%s' score=%d %s, version=%d, bot-detected=%d", i, aAddrStr,
+					pThis->m_aClients[i].m_aName, pThis->m_aClients[i].m_Score, pAuthStr, GameVersion, BotDetected);
+				} else {
+					str_format(aBuf, sizeof(aBuf), "id=%d addr=%s name='%s' score=%d %s", i, aAddrStr,
+					pThis->m_aClients[i].m_aName, pThis->m_aClients[i].m_Score, pAuthStr);
+				}
 			}
 			else
 				str_format(aBuf, sizeof(aBuf), "id=%d addr=%s connecting", i, aAddrStr);

@@ -35,6 +35,9 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_SetEmoteType = EMOTE_NORMAL;
 	m_LastPMReceivedFrom = -1;
 	m_FreezeOnSpawn = false;
+	
+	m_BotDetected = false;
+	m_ClientVersion = 0;
 }
 
 CPlayer::~CPlayer()
