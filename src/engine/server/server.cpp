@@ -1665,7 +1665,7 @@ void CServer::ConStatus(IConsole::IResult *pResult, void *pUser)
 					
 				CPlayer *pPlayer = ((CGameContext *)(pThis->GameServer()))->m_apPlayers[i];
 				int GameVersion = pPlayer ? pPlayer->m_ClientVersion : 0;
-				int BotDetected = pPlayer ? pPlayer->m_BotDetected : 0;
+				int BotDetected = pPlayer ? pPlayer->m_BotDetected || (pPlayer->m_PlayerFlags & PLAYERFLAG_USES_BOT) : 0;
 				
 				if(GameVersion || BotDetected) {
 					str_format(aBuf, sizeof(aBuf), "id=%d addr=%s name='%s' score=%d %s, version=%d, bot-detected=%d", i, aAddrStr,
