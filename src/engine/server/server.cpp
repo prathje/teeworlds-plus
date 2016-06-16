@@ -661,7 +661,7 @@ void CServer::DoSnapshot()
 		if(m_aClients[i].m_SnapRate == CClient::SNAPRATE_RECOVER && (Tick()%50) != 0)
 			continue;
 
-		// this client is trying to recover, don't spam snapshots
+		// this client is trying to init, don't spam snapshots
 		if(m_aClients[i].m_SnapRate == CClient::SNAPRATE_INIT && (Tick()%10) != 0)
 			continue;
 
@@ -685,10 +685,16 @@ void CServer::DoSnapshot()
 			// finish snapshot
 			SnapshotSize = m_SnapshotBuilder.Finish(pData);
 			Crc = pData->Crc();
+      
+      unsigned int DelayTicks = 0;
+      
+      if (!GameServer()->IsClientPlayer(i) && g_Config.m_SvSpecDelay > 0) {
+        DelayTicks = SERVER_TICK_SPEED*g_Config.m_SvSpecDelay;
+      }
 
-			// remove old snapshos
+			// remove old snapshots
 			// keep 3 seconds worth of snapshots
-			m_aClients[i].m_Snapshots.PurgeUntil(m_CurrentGameTick-SERVER_TICK_SPEED*3);
+			m_aClients[i].m_Snapshots.PurgeUntil(m_CurrentGameTick-SERVER_TICK_SPEED*3-DelayTicks);
 
 			// save it the snapshot
 			m_aClients[i].m_Snapshots.Add(m_CurrentGameTick, time_get(), SnapshotSize, pData, 0);
@@ -707,7 +713,21 @@ void CServer::DoSnapshot()
 						m_aClients[i].m_SnapRate = CClient::SNAPRATE_RECOVER;
 				}
 			}
-
+    
+      //Do not send the latest when delay is turned on
+      //Search for a good gametick
+      for(int t = DelayTicks; t > 0; t--) {
+        int Size = m_aClients[i].m_Snapshots.Get(m_CurrentGameTick-t, 0, &pData, 0);
+        if (Size >= 0) {
+          //we found a usefull shot
+          DelayTicks = t;
+          SnapshotSize = sizeof(CSnapshot) + sizeof(int)*pData->NumItems() + pData->DataSize();
+          Crc = pData->Crc();
+          break;
+        }
+      }
+      
+      
 			// create delta
 			DeltaSize = m_SnapshotDelta.CreateDelta(pDeltashot, pData, aDeltaData);
 
@@ -729,8 +749,8 @@ void CServer::DoSnapshot()
 					if(NumPackets == 1)
 					{
 						CMsgPacker Msg(NETMSG_SNAPSINGLE);
-						Msg.AddInt(m_CurrentGameTick);
-						Msg.AddInt(m_CurrentGameTick-DeltaTick);
+						Msg.AddInt(m_CurrentGameTick-DelayTicks);
+						Msg.AddInt(m_CurrentGameTick-DeltaTick-DelayTicks);
 						Msg.AddInt(Crc);
 						Msg.AddInt(Chunk);
 						Msg.AddRaw(&aCompData[n*MaxSize], Chunk);
@@ -739,8 +759,8 @@ void CServer::DoSnapshot()
 					else
 					{
 						CMsgPacker Msg(NETMSG_SNAP);
-						Msg.AddInt(m_CurrentGameTick);
-						Msg.AddInt(m_CurrentGameTick-DeltaTick);
+						Msg.AddInt(m_CurrentGameTick-DelayTicks);
+						Msg.AddInt(m_CurrentGameTick-DeltaTick-DelayTicks);
 						Msg.AddInt(NumPackets);
 						Msg.AddInt(n);
 						Msg.AddInt(Crc);
@@ -753,8 +773,8 @@ void CServer::DoSnapshot()
 			else
 			{
 				CMsgPacker Msg(NETMSG_SNAPEMPTY);
-				Msg.AddInt(m_CurrentGameTick);
-				Msg.AddInt(m_CurrentGameTick-DeltaTick);
+				Msg.AddInt(m_CurrentGameTick-DelayTicks);
+				Msg.AddInt(m_CurrentGameTick-DeltaTick-DelayTicks);
 				SendMsgEx(&Msg, MSGFLAG_FLUSH, i, true);
 			}
 		}
@@ -1003,6 +1023,7 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 			int64 TagTime;
 
 			m_aClients[ClientID].m_LastAckedSnapshot = Unpacker.GetInt();
+      
 			int IntendedTick = Unpacker.GetInt();
 			int Size = Unpacker.GetInt();
 
@@ -1020,7 +1041,13 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 			// skip packets that are old
 			if(IntendedTick > m_aClients[ClientID].m_LastInputTick)
 			{
-				int TimeLeft = ((TickStartTime(IntendedTick)-time_get())*1000) / time_freq();
+         unsigned int DelayTicks = 0;
+      
+        if (!GameServer()->IsClientPlayer(ClientID) && g_Config.m_SvSpecDelay > 0) {
+          DelayTicks = SERVER_TICK_SPEED*g_Config.m_SvSpecDelay;
+        }
+      
+				int TimeLeft = ((TickStartTime(IntendedTick+DelayTicks)-time_get())*1000) / time_freq();
 
 				CMsgPacker Msg(NETMSG_INPUTTIMING);
 				Msg.AddInt(IntendedTick);

@@ -98,6 +98,7 @@ MACRO_CONFIG_INT(SvRconMaxTries, sv_rcon_max_tries, 3, 0, 100, CFGFLAG_SERVER, "
 MACRO_CONFIG_INT(SvRconBantime, sv_rcon_bantime, 5, 0, 1440, CFGFLAG_SERVER, "The time a client gets banned if remote console authentication fails. 0 makes it just use kick")
 MACRO_CONFIG_INT(SvAutoDemoRecord, sv_auto_demo_record, 0, 0, 1, CFGFLAG_SERVER, "Automatically record demos")
 MACRO_CONFIG_INT(SvAutoDemoMax, sv_auto_demo_max, 10, 0, 1000, CFGFLAG_SERVER, "Maximum number of automatically recorded demos (0 = no limit)")
+MACRO_CONFIG_INT(SvSpecDelay, sv_spec_delay, 0, 0, 360, CFGFLAG_SERVER, "Delay the spectator packages")
 
 //account
 MACRO_CONFIG_INT(SvAccountMaxRequests, sv_account_max_requests, 1, 1, 1000, CFGFLAG_SERVER, "Maximum number of request for a client authentication.")
