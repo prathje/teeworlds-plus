@@ -631,12 +631,21 @@ int CServer::SendMsgEx(CMsgPacker *pMsg, int Flags, int ClientID, bool System)
 	return 0;
 }
 
+
+int CServer::IsDelayed(int CID) {
+  //TODO: add exceptions
+  return !GameServer()->IsClientPlayer(CID) && g_Config.m_SvSpecDelay > 0;
+}
+
 void CServer::DoSnapshot()
 {
 	GameServer()->OnPreSnap();
+  //Snap spectator views
+  
+  
 
-	// create snapshot for demo recording
-	if(m_DemoRecorder.IsRecording())
+	// create snapshot for demo recording and/or spectator views
+	if(m_DemoRecorder.IsRecording() || g_Config.m_SvSpecDelay)
 	{
 		char aData[CSnapshot::MAX_SIZE];
 		int SnapshotSize;
@@ -645,10 +654,17 @@ void CServer::DoSnapshot()
 		m_SnapshotBuilder.Init();
 		GameServer()->OnSnap(-1);
 		SnapshotSize = m_SnapshotBuilder.Finish(aData);
-
-		// write snapshot
-		m_DemoRecorder.RecordSnapshot(Tick(), aData, SnapshotSize);
-	}
+    
+    if (m_DemoRecorder.IsRecording())
+    {
+      // write snapshot
+      m_DemoRecorder.RecordSnapshot(Tick(), aData, SnapshotSize);
+    }
+    if (g_Config.m_SvSpecDelay) {
+     // m_DelaySnapshots.PurgeUntil(Tick()-SERVER_TICK_SPEED*3-DelayTicks);
+     // m_DelaySnapshots.Add(Tick(), time_get(), SnapshotSize, aData, 0);
+    }
+  }
 
 	// create snapshots for all clients
 	for(int i = 0; i < MAX_CLIENTS; i++)
@@ -660,11 +676,11 @@ void CServer::DoSnapshot()
 		// this client is trying to recover, don't spam snapshots
 		if(m_aClients[i].m_SnapRate == CClient::SNAPRATE_RECOVER && (Tick()%50) != 0)
 			continue;
+    
 
 		// this client is trying to init, don't spam snapshots
 		if(m_aClients[i].m_SnapRate == CClient::SNAPRATE_INIT && (Tick()%10) != 0)
-			continue;
-
+			continue;    
 		{
 			char aData[CSnapshot::MAX_SIZE];
 			CSnapshot *pData = (CSnapshot*)aData;	// Fix compiler warning for strict-aliasing
@@ -677,31 +693,57 @@ void CServer::DoSnapshot()
 			int DeltashotSize;
 			int DeltaTick = -1;
 			int DeltaSize;
-
+      
+			unsigned int DelayTicks = IsDelayed(i) ? SERVER_TICK_SPEED*g_Config.m_SvSpecDelay : 0;
+			// find snapshot that we can preform delta against
+			EmptySnap.Clear();
+			
 			m_SnapshotBuilder.Init();
-
 			GameServer()->OnSnap(i);
-
 			// finish snapshot
 			SnapshotSize = m_SnapshotBuilder.Finish(pData);
 			Crc = pData->Crc();
-      
-      unsigned int DelayTicks = 0;
-      
-      if (!GameServer()->IsClientPlayer(i) && g_Config.m_SvSpecDelay > 0) {
-        DelayTicks = SERVER_TICK_SPEED*g_Config.m_SvSpecDelay;
-      }
-
 			// remove old snapshots
 			// keep 3 seconds worth of snapshots
 			m_aClients[i].m_Snapshots.PurgeUntil(m_CurrentGameTick-SERVER_TICK_SPEED*3-DelayTicks);
-
-			// save it the snapshot
+				// save it the snapshot
 			m_aClients[i].m_Snapshots.Add(m_CurrentGameTick, time_get(), SnapshotSize, pData, 0);
+				
+			if (IsDelayed(i)) {
+				//Do not send the latest when delay is turned on
+				//Search for a good gametick
+				for(int t = DelayTicks; t > 0; t--) {
+					int Size = m_aClients[i].m_Snapshots.Get(m_CurrentGameTick-t, 0, &pData, 0);
+					if (Size >= 0) {
+						//we found a usefull shot
+						DelayTicks = t;
+						Crc = pData->Crc();
+						break;
+					}
+				}
+				//we have to add the wanted spec player here
+				vec2 View = GameServer()->GetPlayerView(i);
+				int Spectator = GameServer()->GetPlayerSpectator(i);
 
-			// find snapshot that we can preform delta against
-			EmptySnap.Clear();
+				char aDelayData[CSnapshot::MAX_SIZE];
+				CSnapshotBuilder DelayBuilder;
+				DelayBuilder.Init();
+				DelayBuilder.Start(pData);
 
+				//add specinfo
+				
+				CSnapshotItem *pObj = pData->GetItemByTypeID(NETOBJTYPE_SPECTATORINFO, i);
+				CNetObj_SpectatorInfo *pSpectatorInfo = static_cast<CNetObj_SpectatorInfo *>(pObj ? pObj->Data() : DelayBuilder.NewItem(NETOBJTYPE_SPECTATORINFO, i, sizeof(CNetObj_SpectatorInfo)));;
+				if(pSpectatorInfo) {
+					pSpectatorInfo->m_SpectatorID = Spectator;
+					pSpectatorInfo->m_X = View.x;
+					pSpectatorInfo->m_Y = View.y;          
+					DelayBuilder.Finish(aDelayData);
+					pData = (CSnapshot*)aDelayData;
+					Crc = pData->Crc();
+				}
+			}
+      
 			{
 				DeltashotSize = m_aClients[i].m_Snapshots.Get(m_aClients[i].m_LastAckedSnapshot, 0, &pDeltashot, 0);
 				if(DeltashotSize >= 0)
@@ -712,21 +754,7 @@ void CServer::DoSnapshot()
 					if(m_aClients[i].m_SnapRate == CClient::SNAPRATE_FULL)
 						m_aClients[i].m_SnapRate = CClient::SNAPRATE_RECOVER;
 				}
-			}
-    
-      //Do not send the latest when delay is turned on
-      //Search for a good gametick
-      for(int t = DelayTicks; t > 0; t--) {
-        int Size = m_aClients[i].m_Snapshots.Get(m_CurrentGameTick-t, 0, &pData, 0);
-        if (Size >= 0) {
-          //we found a usefull shot
-          DelayTicks = t;
-          SnapshotSize = sizeof(CSnapshot) + sizeof(int)*pData->NumItems() + pData->DataSize();
-          Crc = pData->Crc();
-          break;
-        }
-      }
-      
+			}  
       
 			// create delta
 			DeltaSize = m_SnapshotDelta.CreateDelta(pDeltashot, pData, aDeltaData);

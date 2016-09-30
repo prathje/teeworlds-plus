@@ -4,6 +4,7 @@
 #define ENGINE_SERVER_H
 #include "kernel.h"
 #include "message.h"
+#include "base/vmath.h"
 
 class IServer : public IInterface
 {
@@ -92,6 +93,8 @@ public:
 
 	virtual bool IsClientReady(int ClientID) = 0;
 	virtual bool IsClientPlayer(int ClientID) = 0;
+	virtual vec2 GetPlayerView(int ClientID) = 0;
+	virtual int GetPlayerSpectator(int ClientID) = 0;
 
 	virtual const char *GameType() = 0;
 	virtual const char *Version() = 0;

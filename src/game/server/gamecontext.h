@@ -195,6 +195,8 @@ public:
 
 	virtual bool IsClientReady(int ClientID);
 	virtual bool IsClientPlayer(int ClientID);
+	virtual vec2 GetPlayerView(int ClientID);
+	virtual int GetPlayerSpectator(int ClientID);
 
 	virtual const char *GameType();
 	virtual const char *Version();

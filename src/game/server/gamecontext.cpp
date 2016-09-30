@@ -2077,6 +2077,26 @@ bool CGameContext::IsClientPlayer(int ClientID)
 	return m_apPlayers[ClientID] && m_apPlayers[ClientID]->GetTeam() == TEAM_SPECTATORS ? false : true;
 }
 
+vec2 CGameContext::GetPlayerView(int ClientID)
+{
+	if (m_apPlayers[ClientID]) {
+		return m_apPlayers[ClientID]->m_ViewPos;
+	}
+	else {	
+		return vec2(0,0);
+	}
+}
+
+int CGameContext::GetPlayerSpectator(int ClientID)
+{
+	if (m_apPlayers[ClientID]) {
+		return m_apPlayers[ClientID]->m_SpectatorID;
+	}
+	else {	
+		return -1;
+	}
+}
+
 void CGameContext::ShowStats() {
 	
 	if(!g_Config.m_SvShowStats)

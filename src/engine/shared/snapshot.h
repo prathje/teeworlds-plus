@@ -40,6 +40,7 @@ public:
 	CSnapshotItem *GetItem(int Index);
 	int GetItemSize(int Index);
 	int GetItemIndex(int Key);
+	CSnapshotItem * GetItemByTypeID(int Type, int ID);
 
 	int Crc();
 	void DebugDump();
@@ -132,6 +133,7 @@ public:
 	CSnapshotItem *GetItem(int Index);
 	int *GetItemData(int Key);
 
+	void Start(CSnapshot *pSnap);
 	int Finish(void *pSnapdata);
 };
 

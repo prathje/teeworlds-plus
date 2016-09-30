@@ -191,6 +191,7 @@ public:
 
 	void SetRconCID(int ClientID);
 	int IsAuthed(int ClientID);
+	int IsDelayed(int ClientID);
 	int GetClientInfo(int ClientID, CClientInfo *pInfo);
 	void GetClientAddr(int ClientID, char *pAddrStr, int Size);
 	const char *ClientName(int ClientID);

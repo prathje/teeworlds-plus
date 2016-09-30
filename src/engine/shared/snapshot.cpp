@@ -17,6 +17,16 @@ int CSnapshot::GetItemSize(int Index)
 	return (Offsets()[Index+1] - Offsets()[Index]) - sizeof(CSnapshotItem);
 }
 
+CSnapshotItem * CSnapshot::GetItemByTypeID(int Type, int ID)
+{
+	for(int i = 0; i < m_NumItems; i++)
+	{
+		if(GetItem(i)->m_TypeAndID == (Type<<16)|ID)
+			return GetItem(i);
+	}
+	return 0;
+}
+
 int CSnapshot::GetItemIndex(int Key)
 {
 	// TODO: OPT: this should not be a linear search. very bad
@@ -384,6 +394,8 @@ void CSnapshotStorage::Init()
 	m_pLast = 0;
 }
 
+
+
 void CSnapshotStorage::PurgeAll()
 {
 	CHolder *pHolder = m_pFirst;
@@ -493,6 +505,15 @@ void CSnapshotBuilder::Init()
 {
 	m_DataSize = 0;
 	m_NumItems = 0;
+}
+
+void CSnapshotBuilder::Start(CSnapshot *pSnap)
+{
+	m_NumItems = pSnap->m_NumItems;
+	m_DataSize = pSnap->m_DataSize;
+	int OffsetSize = sizeof(int)*m_NumItems;
+	mem_copy(m_aOffsets, pSnap->Offsets(), OffsetSize);
+	mem_copy(m_aData, pSnap->DataStart(), m_DataSize);
 }
 
 CSnapshotItem *CSnapshotBuilder::GetItem(int Index)

@@ -118,8 +118,7 @@ void CMute::Unmute(CMuteEntry *pMute)
 {
 	if(!pMute)
 		return;
-	pMute->m_Expires = 0;
-
+	
 	char aAddrStr[NETADDR_MAXSTRSIZE] = { 0 }, aBuf[128];
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
@@ -135,6 +134,7 @@ void CMute::Unmute(CMuteEntry *pMute)
 	}
 	str_format(aBuf, sizeof(aBuf), "unmuted %s", pMute->m_aIP);
 	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Mutes", aBuf);
+  pMute->m_Expires = 0;
 }
 
 // Console commands
